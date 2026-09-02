@@ -5,16 +5,19 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   materialize:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'automation/boring-foundation-v1' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout consumer
+      - name: Checkout consumer branch
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
+          ref: ${{ github.head_ref }}
           path: consumer
+          fetch-depth: 0
 
       - name: Checkout coding-tooling
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -48,6 +51,21 @@ jobs:
       - name: Verify installed snapshot
         working-directory: consumer
         run: bun ../tooling/src/cli.ts conventions check --root . --json
+
+      - name: Commit generated convention snapshot
+        working-directory: consumer
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if [[ -z "$(git status --porcelain -- conventions.json conventions.lock.json .conventions)" ]]; then
+            echo "Convention snapshot already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add conventions.json conventions.lock.json .conventions
+          git commit -m "Install boring foundation conventions"
+          git push origin "HEAD:${BRANCH}"
 
       - name: Upload generated convention snapshot
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
