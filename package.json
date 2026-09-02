@@ -1,0 +1,25 @@
+{
+  "name": "@rect/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/jsx-runtime.ts"
+  },
+  "scripts": {
+    "dev": "bun examples/counter/index.html --console",
+    "build": "bun build examples/counter/index.html --outdir=dist --target=browser",
+    "format": "bunx oxfmt@0.66.0 src examples tests benchmarks package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json",
+    "format:check": "bunx oxfmt@0.66.0 --check src examples tests benchmarks package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json",
+    "lint": "bunx oxlint@1.81.0 src examples tests benchmarks",
+    "typecheck": "bunx -p typescript@7.0.2 tsc -p tsconfig.json --noEmit",
+    "test": "bun test tests/unit",
+    "test:unit": "bun test tests/unit",
+    "benchmark:state": "bun benchmarks/state.ts --iterations 100000",
+    "benchmark:smoke": "bun benchmarks/state.ts --iterations 1000",
+    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test:unit && bun run build"
+  }
+}
