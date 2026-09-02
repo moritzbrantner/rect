@@ -4,7 +4,6 @@
   "workspaces": {
     "": {
       "name": "@rect/core",
-      "version": "0.0.0",
     },
   },
   "packages": {},
