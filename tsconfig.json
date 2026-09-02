@@ -16,7 +16,6 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "types": [],
-    "baseUrl": ".",
     "paths": {
       "@rect/core": ["./src/index.ts"],
       "@rect/core/jsx-runtime": ["./src/jsx-runtime.ts"],
