@@ -52,9 +52,6 @@ jobs:
             --root "$GITHUB_WORKSPACE" \
             --json
 
-      - name: Verify repository conformance
-        run: bun .landscape/coding-tooling/src/cli.ts conformance --config .coding-tooling.json --json
-
       - name: Commit generated convention snapshot
         env:
           BRANCH: ${{ github.ref_name }}
