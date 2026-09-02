@@ -1,0 +1,32 @@
+name: Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-pages:
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+      packages: read
+    uses: moritzbrantner/reusable-workflows/.github/workflows/deploy-pages.yml@workflow-standard-v1.3
+    with:
+      node_version: ""
+      bun_version: "1.4.0"
+      install_command: bun install --frozen-lockfile
+      build_command: bun run build
+      artifact_path: dist
+      concurrency_group: rect-pages
+      cancel_in_progress: false
