@@ -1,0 +1,60 @@
+name: Materialize Foundation Conventions
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout consumer
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          path: consumer
+
+      - name: Checkout coding-tooling
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: moritzbrantner/coding-tooling
+          ref: 7f63dade760bfb1020c69d1a0ac7319cbbdf91ab
+          path: tooling
+
+      - name: Checkout coding-agent-conventions
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: moritzbrantner/coding-agent-conventions
+          ref: c232b66b698fd2fa5c6f5c18d9afbdf00dbccc70
+          path: conventions
+
+      - name: Set up pinned Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+
+      - name: Materialize selected policy
+        working-directory: consumer
+        run: >-
+          bun ../tooling/src/cli.ts conventions init
+          typescript tooling benchmarking
+          --profile foundation
+          --root .
+          --conventions-root ../conventions
+          --json
+
+      - name: Verify installed snapshot
+        working-directory: consumer
+        run: bun ../tooling/src/cli.ts conventions check --root . --json
+
+      - name: Upload generated convention snapshot
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: rect-foundation-conventions
+          path: |
+            consumer/conventions.json
+            consumer/conventions.lock.json
+            consumer/.conventions
+          include-hidden-files: true
