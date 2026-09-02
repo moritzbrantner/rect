@@ -58,13 +58,7 @@ describe("state", () => {
     setInner(1);
     setOuter(1);
 
-    expect(seen).toEqual([
-      "inner:0",
-      "outer:0:0",
-      "outer:0:1",
-      "inner:1",
-      "outer:1:1",
-    ]);
+    expect(seen).toEqual(["inner:0", "outer:0:0", "outer:0:1", "inner:1", "outer:1:1"]);
 
     disposeOuter();
     disposeInner?.();
