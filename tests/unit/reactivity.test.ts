@@ -38,4 +38,54 @@ describe("state", () => {
 
     expect(seen).toEqual([1, 2, 10, 11]);
   });
+
+  test("restores the outer dependency context after a nested effect runs", () => {
+    const [outer, setOuter] = state(0);
+    const [inner, setInner] = state(0);
+    const [tail, setTail] = state(0);
+    const seen: string[] = [];
+    let disposeInner: (() => void) | undefined;
+
+    const disposeOuter = effect(() => {
+      const outerValue = outer();
+      disposeInner ??= effect(() => {
+        seen.push(`inner:${inner()}`);
+      });
+      seen.push(`outer:${outerValue}:${tail()}`);
+    });
+
+    setTail(1);
+    setInner(1);
+    setOuter(1);
+
+    expect(seen).toEqual([
+      "inner:0",
+      "outer:0:0",
+      "outer:0:1",
+      "inner:1",
+      "outer:1:1",
+    ]);
+
+    disposeOuter();
+    disposeInner?.();
+    setTail(2);
+    setInner(2);
+    expect(seen.at(-1)).toBe("outer:1:1");
+  });
+
+  test("uses Object.is semantics for change detection", () => {
+    const [value, setValue] = state<number>(Number.NaN);
+    let executions = 0;
+    effect(() => {
+      value();
+      executions += 1;
+    });
+
+    setValue(Number.NaN);
+    expect(executions).toBe(1);
+
+    setValue(0);
+    setValue(-0);
+    expect(executions).toBe(3);
+  });
 });
