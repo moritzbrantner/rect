@@ -1,0 +1,70 @@
+name: Materialize conventions
+
+on:
+  push:
+    branches: [chore/install-conventions]
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out Rect
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check out coding-tooling
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: moritzbrantner/coding-tooling
+          ref: 4524918dc26ad9eec85df43c7c11fb08aca6d054
+          path: .landscape/coding-tooling
+          persist-credentials: false
+
+      - name: Check out coding-agent-conventions
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: moritzbrantner/coding-agent-conventions
+          ref: 8965e9274ec214146bfb18ed9ca1f8586b0617b8
+          path: .landscape/coding-agent-conventions
+          persist-credentials: false
+
+      - name: Set up pinned Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+
+      - name: Materialize selected modules
+        run: |
+          bun .landscape/coding-tooling/src/cli.ts conventions init \
+            dependencies environment git typescript tooling ui benchmarking \
+            --root "$GITHUB_WORKSPACE" \
+            --conventions-root "$GITHUB_WORKSPACE/.landscape/coding-agent-conventions" \
+            --json
+
+      - name: Verify managed snapshot integrity
+        run: |
+          bun .landscape/coding-tooling/src/cli.ts conventions check \
+            --root "$GITHUB_WORKSPACE" \
+            --json
+
+      - name: Verify repository conformance
+        run: bun .landscape/coding-tooling/src/cli.ts conformance --config .coding-tooling.json --json
+
+      - name: Commit generated convention snapshot
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add conventions.json conventions.lock.json .conventions
+          if git diff --cached --quiet; then
+            echo "Convention snapshot is already current."
+            exit 0
+          fi
+          git commit -m "chore: install shared conventions"
+          git push origin "HEAD:${BRANCH}"
