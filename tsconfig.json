@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "strict": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@rect/core",
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "types": [],
+    "paths": {
+      "@rect/core": ["./src/index.ts"],
+      "@rect/core/jsx-runtime": ["./src/jsx-runtime.ts"],
+      "@rect/core/jsx-dev-runtime": ["./src/jsx-runtime.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "examples/**/*.tsx"]
+}
