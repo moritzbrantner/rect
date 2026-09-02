@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "registry": "coding-agent-conventions",
+  "modules": [
+    "dependencies",
+    "environment",
+    "git",
+    "typescript",
+    "tooling",
+    "ui",
+    "benchmarking"
+  ]
+}
