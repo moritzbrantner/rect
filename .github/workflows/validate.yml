@@ -33,21 +33,6 @@ jobs:
           bun-version: 1.4.0
           install-mode: none
 
-      - name: Check formatting
-        run: bun run format:check
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Build Counter
-        run: bun run build
-
-      - name: Unit tests
-        run: bun run test:unit
-
       - name: Run fast validation tier
         uses: moritzbrantner/coding-tooling@4524918dc26ad9eec85df43c7c11fb08aca6d054
         with:
