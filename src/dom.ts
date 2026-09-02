@@ -39,16 +39,10 @@ function textValue(value: unknown): string {
   if (value === null || value === undefined || typeof value === "boolean") {
     return "";
   }
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "bigint"
-  ) {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "bigint") {
     return String(value);
   }
-  throw new TypeError(
-    "Rect v0 dynamic JSX children must resolve to text-like values.",
-  );
+  throw new TypeError("Rect v0 dynamic JSX children must resolve to text-like values.");
 }
 
 function dynamicText(accessor: Accessor<unknown>): Text {
@@ -80,11 +74,7 @@ function appendChild(parent: Node, child: Child): void {
     return;
   }
 
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "bigint"
-  ) {
+  if (typeof child === "string" || typeof child === "number" || typeof child === "bigint") {
     parent.appendChild(document.createTextNode(String(child)));
     return;
   }

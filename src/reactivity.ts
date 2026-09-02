@@ -61,10 +61,7 @@ export function state<T>(initial: T): readonly [Accessor<T>, Setter<T>] {
   accessors.add(read);
 
   const write: Setter<T> = (update) => {
-    const next =
-      typeof update === "function"
-        ? (update as (previous: T) => T)(value)
-        : update;
+    const next = typeof update === "function" ? (update as (previous: T) => T)(value) : update;
 
     if (Object.is(value, next)) return value;
 

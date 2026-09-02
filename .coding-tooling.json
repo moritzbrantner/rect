@@ -15,12 +15,6 @@
     "integration": ["test:integration"],
     "performance": ["benchmark:smoke"]
   },
-  "requiredCapabilities": [
-    "format:check",
-    "lint",
-    "typecheck",
-    "build",
-    "test:unit"
-  ],
+  "requiredCapabilities": ["format:check", "lint", "typecheck", "build", "test:unit"],
   "optionalCapabilities": ["test:integration", "benchmark:smoke"]
 }

@@ -29,9 +29,7 @@ for (let index = 1; index <= iterations; index += 1) {
 dispose();
 
 if (observed !== iterations || effectRuns !== iterations + 1) {
-  throw new Error(
-    `state propagation mismatch: observed=${observed}, effectRuns=${effectRuns}`,
-  );
+  throw new Error(`state propagation mismatch: observed=${observed}, effectRuns=${effectRuns}`);
 }
 
 console.log(

@@ -3,7 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.0",
   "exports": {
     ".": "./src/index.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
@@ -21,5 +20,6 @@
     "benchmark:state": "bun benchmarks/state.ts --iterations 100000",
     "benchmark:smoke": "bun benchmarks/state.ts --iterations 1000",
     "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test:unit && bun run build"
-  }
+  },
+  "packageManager": "bun@1.4.0"
 }
