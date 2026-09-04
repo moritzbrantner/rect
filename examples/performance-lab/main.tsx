@@ -185,7 +185,9 @@ function App(): Node {
           });
         }
       }
-      setProgress(`Finished ${results.filter((result) => result.verified).length}/${results.length} verified fixtures.`);
+      setProgress(
+        `Finished ${results.filter((result) => result.verified).length}/${results.length} verified fixtures.`,
+      );
       setRawOutput(JSON.stringify(results, null, 2));
     } finally {
       if (runButton) runButton.disabled = false;
@@ -198,14 +200,16 @@ function App(): Node {
         <p className="eyebrow">Rect performance lab · horizon 1</p>
         <h1>How little work can a UI framework do?</h1>
         <p className="lede">
-          Rect runs components once, binds reactive text directly to DOM nodes, and deliberately avoids a virtual DOM.
-          This page is itself rendered by Rect.
+          Rect runs components once, binds reactive text directly to DOM nodes, and deliberately
+          avoids a virtual DOM. This page is itself rendered by Rect.
         </p>
         <div className="hero-actions">
           <button className="primary" type="button" onClick={() => setCount((value) => value + 1)}>
             Rect counter: {count}
           </button>
-          <a className="secondary" href="https://github.com/moritzbrantner/rect">View source</a>
+          <a className="secondary" href="https://github.com/moritzbrantner/rect">
+            View source
+          </a>
         </div>
       </section>
 
@@ -216,23 +220,49 @@ function App(): Node {
             <h2 id="benchmark-title">Same reactive fan-out, five implementations</h2>
           </div>
           <p className="section-note">
-            No aggregate winner score. Compare cold and warm mount cost, update latency, DOM mutations, served JavaScript and heap evidence separately.
+            No aggregate winner score. Compare cold and warm mount cost, update latency, DOM
+            mutations, served JavaScript and heap evidence separately.
           </p>
         </div>
 
         <div className="controls">
           <label>
             Reactive text nodes
-            <input ref={(element: unknown) => { if (element instanceof HTMLInputElement) nodesInput = element; }} type="number" min="10" max="10000" value="1000" />
+            <input
+              ref={(element: unknown) => {
+                if (element instanceof HTMLInputElement) nodesInput = element;
+              }}
+              type="number"
+              min="10"
+              max="10000"
+              value="1000"
+            />
           </label>
           <label>
             Measured updates
-            <input ref={(element: unknown) => { if (element instanceof HTMLInputElement) updatesInput = element; }} type="number" min="5" max="250" value="40" />
+            <input
+              ref={(element: unknown) => {
+                if (element instanceof HTMLInputElement) updatesInput = element;
+              }}
+              type="number"
+              min="5"
+              max="250"
+              value="40"
+            />
           </label>
-          <button ref={(element: unknown) => { if (element instanceof HTMLButtonElement) runButton = element; }} className="primary" type="button" onClick={runSuite}>
+          <button
+            ref={(element: unknown) => {
+              if (element instanceof HTMLButtonElement) runButton = element;
+            }}
+            className="primary"
+            type="button"
+            onClick={runSuite}
+          >
             Run all benchmarks
           </button>
-          <span className="progress" role="status">{progress}</span>
+          <span className="progress" role="status">
+            {progress}
+          </span>
         </div>
 
         <div className="table-wrap">
@@ -252,7 +282,9 @@ function App(): Node {
           </table>
         </div>
         <p className="fine-print">
-          The update workload changes one value observed by every text node. Mount samples run after module loading; cross-origin runtime bytes and heap data are reported only when the browser exposes them. Results are machine-local evidence, not universal rankings.
+          The update workload changes one value observed by every text node. Mount samples run after
+          module loading; cross-origin runtime bytes and heap data are reported only when the
+          browser exposes them. Results are machine-local evidence, not universal rankings.
         </p>
       </section>
 
@@ -261,21 +293,25 @@ function App(): Node {
           <p className="eyebrow">Rect execution</p>
           <h2>One component run</h2>
           <p>
-            JSX creates real nodes immediately. Each dynamic text child owns exactly one text node and one reactive subscription. An update writes directly to that node.
+            JSX creates real nodes immediately. Each dynamic text child owns exactly one text node
+            and one reactive subscription. An update writes directly to that node.
           </p>
         </article>
         <article className="card">
           <p className="eyebrow">Comparison boundary</p>
           <h2>Comparable, not identical</h2>
           <p>
-            React is compiled by Bun 1.4&apos;s built-in React Compiler. Preact uses its renderer. Solid uses its signal runtime with a compiler-shaped direct-DOM fixture. Vanilla is the lower-level reference.
+            React is compiled by Bun 1.4&apos;s built-in React Compiler. Preact uses its renderer.
+            Solid uses its signal runtime with a compiler-shaped direct-DOM fixture. Vanilla is the
+            lower-level reference.
           </p>
         </article>
         <article className="card">
           <p className="eyebrow">Deliberately missing</p>
           <h2>No keyed-list victory lap</h2>
           <p>
-            Rect v0 does not yet own keyed collection semantics, so this lab does not benchmark them. A workload enters the suite only after Rect has a tested behavior contract for it.
+            Rect v0 does not yet own keyed collection semantics, so this lab does not benchmark
+            them. A workload enters the suite only after Rect has a tested behavior contract for it.
           </p>
         </article>
       </section>

@@ -25,7 +25,9 @@ export default {
   version: "10.29.8",
   implementation: "Preact renderer · synchronous scheduler for measurement",
   assetUrl: import.meta.url,
-  notes: ["The benchmark overrides Preact's debounce scheduler so each measured update reaches the DOM synchronously."],
+  notes: [
+    "The benchmark overrides Preact's debounce scheduler so each measured update reaches the DOM synchronously.",
+  ],
   mount(target, nodeCount) {
     let controller = null;
     render(h(BenchmarkView, { nodeCount, ref: (value) => (controller = value) }), target);

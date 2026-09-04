@@ -133,7 +133,10 @@ window.addEventListener("message", async (event) => {
   if (!message || message.type !== "rect:benchmark-run") return;
   try {
     const result = await run(message.config);
-    window.parent.postMessage({ type: "rect:benchmark-result", runId: message.runId, result }, window.location.origin);
+    window.parent.postMessage(
+      { type: "rect:benchmark-result", runId: message.runId, result },
+      window.location.origin,
+    );
   } catch (error) {
     window.parent.postMessage(
       {
