@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -47,19 +47,6 @@ jobs:
 
       - name: Prepare declared environment
         run: bash scripts/codex-environment.sh setup
-
-      - name: Apply canonical formatting to PR branch
-        if: github.event_name == 'pull_request'
-        run: |
-          git switch feat/pages-performance-lab-horizon-1
-          bun run format
-          if ! git diff --quiet -- examples/performance-lab; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add examples/performance-lab
-            git commit -m "style: format performance lab"
-            git push origin HEAD:feat/pages-performance-lab-horizon-1
-          fi
 
       - name: Build Pages performance lab
         run: bun run build:pages
