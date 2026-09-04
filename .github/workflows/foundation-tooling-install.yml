@@ -1,0 +1,39 @@
+name: Foundation tooling install
+
+on:
+  push:
+    branches:
+      - rollout/foundation-conventions-v1
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - name: Install pinned repository tooling
+        run: bun add --dev --exact oxfmt@0.66.0 oxlint@1.81.0 typescript@7.0.2
+      - name: Make dependency reconciliation explicit
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.repository-environment.toml')
+          text = path.read_text()
+          text = text.replace('[setup]\ncommands = []', '[setup]\ncommands = ["bun install --frozen-lockfile"]')
+          text = text.replace('[maintenance]\ncommands = []', '[maintenance]\ncommands = ["bun install --frozen-lockfile"]')
+          path.write_text(text)
+          PY
+      - name: Commit tooling state
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add package.json bun.lock .repository-environment.toml
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: pin foundation tooling"
+          git push origin HEAD
