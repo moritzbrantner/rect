@@ -48,6 +48,14 @@ jobs:
       - name: Prepare declared environment
         run: bash scripts/codex-environment.sh setup
 
+      - name: Capture canonical formatter patch
+        if: github.event_name == 'pull_request'
+        run: |
+          bun run format
+          printf 'FORMAT_PATCH_BASE64='
+          git diff -- examples/performance-lab | base64 -w0
+          printf '\n'
+
       - name: Build Pages performance lab
         run: bun run build:pages
 
