@@ -27,14 +27,14 @@ jobs:
         run: bash scripts/codex-environment.sh setup
 
       - name: Verify environment fingerprint
-        uses: moritzbrantner/coding-tooling@4524918dc26ad9eec85df43c7c11fb08aca6d054
+        uses: moritzbrantner/coding-tooling@dfd459a3f5d6858ae813dca9e1e8442c3dd0cc17
         with:
           operation: environment-verify
           bun-version: 1.4.0
           install-mode: none
 
       - name: Run fast validation tier
-        uses: moritzbrantner/coding-tooling@4524918dc26ad9eec85df43c7c11fb08aca6d054
+        uses: moritzbrantner/coding-tooling@dfd459a3f5d6858ae813dca9e1e8442c3dd0cc17
         with:
           tier: fast
           bun-version: 1.4.0
