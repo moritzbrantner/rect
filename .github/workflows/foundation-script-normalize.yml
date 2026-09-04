@@ -1,0 +1,44 @@
+name: Foundation script normalization
+
+on:
+  push:
+    branches:
+      - rollout/foundation-conventions-v1
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Normalize pinned tool scripts
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('package.json')
+          data = json.loads(path.read_text())
+          scripts = data['scripts']
+          scripts['format'] = 'oxfmt src examples tests benchmarks package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json'
+          scripts['format:check'] = 'oxfmt --check src examples tests benchmarks package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json'
+          scripts['lint'] = 'oxlint src examples tests benchmarks'
+          scripts['typecheck'] = 'tsc -p tsconfig.json --noEmit'
+          path.write_text(json.dumps(data, indent=2) + '\n')
+          PY
+          ./node_modules/.bin/oxfmt package.json
+      - name: Commit normalized scripts
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add package.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: use pinned local foundation tooling"
+          git push origin HEAD
