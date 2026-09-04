@@ -10,16 +10,18 @@
   },
   "scripts": {
     "dev": "bun examples/counter/index.html --console",
+    "dev:pages": "bun examples/performance-lab/index.html --console",
     "build": "bun build examples/counter/index.html --outdir=dist --target=browser",
-    "format": "oxfmt src examples tests benchmarks package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json",
-    "format:check": "oxfmt --check src examples tests benchmarks package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json",
-    "lint": "oxlint src examples tests benchmarks",
+    "build:pages": "bun scripts/build-pages.mjs",
+    "format": "oxfmt src examples tests benchmarks scripts/build-pages.mjs package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json",
+    "format:check": "oxfmt --check src examples tests benchmarks scripts/build-pages.mjs package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json",
+    "lint": "oxlint src examples tests benchmarks scripts/build-pages.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "bun test tests/unit",
     "test:unit": "bun test tests/unit",
     "benchmark:state": "bun benchmarks/state.ts --iterations 100000",
     "benchmark:smoke": "bun benchmarks/state.ts --iterations 1000",
-    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test:unit && bun run build"
+    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test:unit && bun run build && bun run build:pages"
   },
   "devDependencies": {
     "oxfmt": "0.66.0",

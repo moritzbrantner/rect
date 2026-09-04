@@ -16,6 +16,7 @@ The first vertical slice is deliberately small:
 - a state accessor used as a JSX child owns one text node and updates that text node directly.
 - the Counter example proves the browser path.
 - a deterministic state-propagation workload establishes the first performance-evidence target.
+- a Rect-built GitHub Pages performance lab exercises the browser runtime and compares bounded equivalent fixtures.
 
 ```tsx
 import { mount, state } from "@rect/core";
@@ -34,6 +35,26 @@ mount(<Counter />, document.querySelector("#app")!);
 ```
 
 The component runs once. `{count}` passes the reactive accessor into the JSX runtime; the runtime subscribes the corresponding text node. A later compiler is expected to make this syntax more flexible and move more work from runtime to build time, without changing the tested behavior contract.
+
+## Performance lab
+
+The GitHub Pages site is itself built with Rect and keeps the benchmark surface deliberately narrower than the framework roadmap. The first browser workload measures reactive text fan-out across Rect, vanilla DOM, React + React Compiler, Preact, and Solid.
+
+It reports dimensions separately instead of producing a synthetic winner score:
+
+- first and warm mount latency;
+- update p50/p95/p99;
+- observed DOM mutations per update;
+- served application/runtime JavaScript bytes when measurable;
+- browser heap delta when exposed by the runtime;
+- correctness verification for the first and last reactive node.
+
+React fixture source is processed by Bun 1.4's built-in React Compiler. Framework runtimes are exact-version external browser imports in this first horizon so Rect's frozen core lockfile remains unchanged. See [`docs/performance-lab.md`](docs/performance-lab.md) for the evidence boundary and the next normalization step.
+
+```sh
+bun run dev:pages
+bun run build:pages
+```
 
 ## Development
 

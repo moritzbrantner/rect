@@ -22,5 +22,5 @@
       "@rect/core/jsx-dev-runtime": ["./src/jsx-runtime.ts"]
     }
   },
-  "include": ["src/**/*.ts", "examples/**/*.tsx"]
+  "include": ["src/**/*.ts", "examples/**/*.ts", "examples/**/*.tsx"]
 }

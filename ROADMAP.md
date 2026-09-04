@@ -15,6 +15,23 @@ Current bootstrap:
 
 Exit condition: the Counter builds, state semantics have tests, and the benchmark command is reproducible.
 
+## Stage 0.5 — browser performance lab
+
+Expose the existing behavior contract through a Rect-built GitHub Pages site without widening the runtime API.
+
+First horizon:
+
+- interactive Rect counter that dogfoods the framework;
+- isolated reactive text fan-out fixture;
+- Rect, vanilla DOM, React + React Compiler, Preact, and Solid comparisons;
+- p50/p95/p99 latency evidence rather than a single score;
+- observable DOM mutation, JavaScript transfer, heap, and correctness evidence where the browser exposes it;
+- an explicit methodology/limitations document.
+
+Comparison-only framework runtimes stay outside Rect's core dependency graph. The first Pages horizon may use exact-version browser imports; a later comparison-workspace slice should normalize all framework builds under its own frozen dependency boundary before bundle-size claims become release evidence.
+
+Exit condition: Pages builds in CI, the browser protocol verifies fixture correctness, and no Rect runtime change exists solely to improve the benchmark.
+
 ## Stage 1 — compiler-assisted static JSX
 
 Introduce the first Rect compiler transform, preferably on Oxc/Rust infrastructure if the integration remains small enough.
@@ -51,9 +68,9 @@ Implement one primitive at a time:
 
 For keyed collections, make the algorithm explicit and benchmark adversarial cases rather than hiding a generic tree diff behind JSX.
 
-## Stage 4 — comparison harness
+## Stage 4 — normalized comparison harness
 
-Build equivalent small fixtures for:
+Promote the browser comparison from exploratory evidence to a reproducible local harness with equivalent small fixtures for:
 
 - Rect reference runtime;
 - Rect compiled output;
