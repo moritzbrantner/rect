@@ -21,5 +21,10 @@
     "benchmark:smoke": "bun benchmarks/state.ts --iterations 1000",
     "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test:unit && bun run build"
   },
-  "packageManager": "bun@1.4.0"
+  "packageManager": "bun@1.4.0",
+  "devDependencies": {
+    "oxfmt": "0.66.0",
+    "oxlint": "1.81.0",
+    "typescript": "7.0.2"
+  }
 }

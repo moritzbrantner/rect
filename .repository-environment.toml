@@ -7,10 +7,10 @@ track = "latest-stable"
 apt = []
 
 [setup]
-commands = []
+commands = ["bun install --frozen-lockfile"]
 
 [maintenance]
-commands = []
+commands = ["bun install --frozen-lockfile"]
 
 [cache]
 paths = ["~/.bun/install/cache"]
