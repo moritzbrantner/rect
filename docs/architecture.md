@@ -55,12 +55,14 @@ The region owns one selector effect. That effect reads only the boolean conditio
 
 Each selected branch gets a dedicated child owner whose parent is the owner that created the region. This matters when a later switch occurs after the original component/provider callback has returned: context lookup still walks through the captured owner tree, and branch-created effects, derived values, child components, providers, and `onCleanup()` handlers receive the correct lifetime.
 
-A branch switch is deliberately narrow:
+A branch switch is deliberately narrow and non-overlapping:
 
-1. construct the next branch lazily under a fresh branch owner;
-2. dispose every node and owner belonging to the previous branch;
+1. dispose every node and owner belonging to the previous branch;
+2. construct the selected branch lazily under a fresh branch owner;
 3. insert the new branch immediately before the stable end anchor;
 4. leave surrounding DOM and component execution untouched.
+
+Disposal before construction means effects owned by the old branch cannot react to state writes performed while the replacement branch is being created. If replacement construction throws, the region is left empty and can retry on a later condition change rather than keeping two branch lifetimes alive at once.
 
 If the containing component is unmounted, the start-anchor disposer stops the selector and disposes the active branch. Shared dynamic-text bindings remain node-owned, so removing the last text node in an inactive branch tears down that fan-out binding without coupling it to the branch owner.
 
