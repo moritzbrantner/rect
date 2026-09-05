@@ -21,6 +21,7 @@ Rect is an experimental modern UI framework. Optimize for a small understandable
 - `effect()` retracks dependencies on every execution; `batch()` deduplicates downstream execution and `untrack()` suppresses deliberate incidental dependency collection.
 - A reactive accessor used directly as a JSX child represents dynamic text. Repeated uses of the same accessor share the fan-out tracking work while retaining direct text-node writes.
 - `createContext()` / `provide()` / `consume()` resolve values through the owner tree. `provide()` uses a callback because JSX children are currently eager.
+- `show()` owns a condition-driven DOM region between stable anchors. Branch callbacks are lazy, branch construction is untracked by the selector, and each active branch has its own owner lifetime.
 - There are no component rerenders, dependency arrays, manual memoization hooks, or a virtual DOM.
 - The compiler is intentionally deferred until the reference runtime semantics have tests and evidence.
 
@@ -67,8 +68,8 @@ Prefer, in order:
 3. tiny explicit runtime primitives;
 4. generic runtime machinery only when a real case requires it.
 
-A compiler optimization must preserve a small non-compiler reference behavior so differential tests can prove it. New control-flow machinery should arrive with parity tests before benchmark claims.
+A compiler optimization must preserve a small non-compiler reference behavior so differential tests can prove it. New control-flow machinery should arrive with ownership tests before benchmark claims.
 
 ## Next decision horizon
 
-The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX, conditional regions, keyed collections, and progressively more precise region ownership. Do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.
+The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX, keyed collections, and progressively more precise region ownership. Do not turn `show()` into a generic reconciler and do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.

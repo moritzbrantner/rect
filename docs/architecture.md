@@ -45,9 +45,28 @@ Every function component executes once inside a reactive owner scope. Owners for
 
 The shared dynamic-text fan-out binding is deliberately node-owned rather than component-owned because one accessor may be rendered by nodes belonging to different component owners. Its effect lives until its last bound text node is disposed.
 
-A component that produces a `DocumentFragment` carries its owner disposer with that fragment. When the fragment is inserted, the disposer is transferred to the first concrete child, or to the receiving parent for an empty result. This avoids adding marker DOM solely for lifetime bookkeeping in the current static-tree slice.
+A component that produces a `DocumentFragment` carries its owner disposer with that fragment. When the fragment is inserted, the disposer is transferred to the first concrete child, or to the receiving parent for an empty result. This avoids adding marker DOM solely for ordinary component lifetime bookkeeping.
 
-Conditional and keyed regions will need more precise region ownership so independently removed fragments dispose immediately rather than relying on their containing static owner.
+## Conditional regions
+
+`show(condition, whenTrue, whenFalse?)` is Rect's first explicit dynamic DOM region. It uses two stable comment anchors around the currently active branch rather than rerendering the surrounding component or diffing a tree.
+
+The region owns one selector effect. That effect reads only the boolean condition. Branch construction runs through `untrack()`, so an incidental accessor read while creating a branch cannot silently widen the selector's dependencies.
+
+Each selected branch gets a dedicated child owner whose parent is the owner that created the region. This matters when a later switch occurs after the original component/provider callback has returned: context lookup still walks through the captured owner tree, and branch-created effects, derived values, child components, providers, and `onCleanup()` handlers receive the correct lifetime.
+
+A branch switch is deliberately narrow and non-overlapping:
+
+1. dispose every node and owner belonging to the previous branch;
+2. construct the selected branch lazily under a fresh branch owner;
+3. insert the new branch immediately before the stable end anchor;
+4. leave surrounding DOM and component execution untouched.
+
+Disposal before construction means effects owned by the old branch cannot react to state writes performed while the replacement branch is being created. If replacement construction throws, the region is left empty and can retry on a later condition change rather than keeping two branch lifetimes alive at once.
+
+If the containing component is unmounted, the start-anchor disposer stops the selector and disposes the active branch. Shared dynamic-text bindings remain node-owned, so removing the last text node in an inactive branch tears down that fan-out binding without coupling it to the branch owner.
+
+Keyed collections should reuse the same owner-tree model but define their own item/key algorithm rather than generalizing `show()` into a hidden reconciler.
 
 ## Context
 
@@ -59,7 +78,7 @@ JSX children are currently constructed eagerly, so `provide()` intentionally acc
 return provide(Theme, "dark", () => <Toolbar />);
 ```
 
-The callback ensures descendant components execute while the provider owner is active. A future compiler may provide friendlier syntax without changing the ownership semantics.
+The callback ensures descendant components execute while the provider owner is active. `show()` uses the same lazy-callback rule for branches. A future compiler may provide friendlier syntax without changing the ownership semantics.
 
 ## Compiler direction
 
@@ -93,10 +112,15 @@ The current private `0.0.0` surface exposes:
 - `effect`, `batch`, and `untrack`;
 - `onCleanup`;
 - `createContext`, `provide`, and `consume`;
+- `show`;
 - `mount` and `Fragment`;
 - supporting TypeScript types.
 
 Names and signatures may still change. The package stays private at `0.0.0` until the semantics survive the compiler and control-flow stages.
+
+## React compatibility boundary
+
+Rect is not a React runtime implementation. JSX syntax, function-component shape, ordinary props, and many DOM event/attribute spellings are intentionally familiar, so small presentational components may be mechanically portable. Stateful semantics are different: Rect components execute once, state is read through accessors, effects discover dependencies automatically, and dynamic branches use explicit regions instead of relying on component rerenders. React packages that depend on React hooks, reconciliation, context internals, synthetic events, `ReactDOM`, or key semantics are therefore outside Rect's compatibility contract.
 
 ## Performance architecture
 

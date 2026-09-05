@@ -73,15 +73,28 @@ Exit condition: branch-dependent derived values, batching, non-tracked reads, ow
 
 ## Stage 3 — control flow
 
-Implement one primitive at a time:
+Control flow is introduced one region primitive at a time.
 
-1. conditional regions;
-2. keyed collections;
-3. region-specific ownership/disposal for independently removed fragments.
+### 3.1 Conditional regions
 
-The base component owner tree already exists. Control-flow work must make ownership more precise rather than introducing a second lifetime model.
+`show(condition, whenTrue, whenFalse?)` is the first explicit dynamic region:
 
-For keyed collections, make the algorithm explicit and benchmark adversarial cases rather than hiding a generic tree diff behind JSX.
+- only the boolean condition is tracked by the region selector;
+- branches are lazy callbacks rather than eagerly constructed JSX;
+- each active branch receives a dedicated owner lifetime;
+- switching disposes the old branch immediately and inserts only the selected branch between stable DOM anchors;
+- branch-local effects, derived values, context, cleanup, and dynamic text stay within their existing ownership rules;
+- no component rerender or generic tree diff is introduced.
+
+Exit condition: repeated switching, branch cleanup, context inheritance, incidental non-tracked branch reads, shared dynamic text, and containing-tree disposal have deterministic coverage.
+
+### 3.2 Keyed collections
+
+Next, add a keyed collection region with an explicit algorithm and stable item owners. Benchmark append, prepend, reorder, sparse removal, and adversarial key movement instead of hiding a generic tree diff behind JSX.
+
+### 3.3 Region ownership refinement
+
+After conditional and keyed regions exist, tighten ownership for independently removable nested fragments where the two primitives expose a concrete need. Do not introduce a second lifetime model beside the owner tree.
 
 ## Stage 4 — normalized comparison harness
 
