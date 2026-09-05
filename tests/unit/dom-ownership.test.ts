@@ -18,7 +18,9 @@ class FakeNode {
     }
 
     if (child.parentNode) {
-      child.parentNode.childNodes = child.parentNode.childNodes.filter((nested) => nested !== child);
+      child.parentNode.childNodes = child.parentNode.childNodes.filter(
+        (nested) => nested !== child,
+      );
     }
     child.parentNode = this;
     this.childNodes.push(child);
@@ -79,45 +81,48 @@ afterAll(() => {
   Object.assign(globalThis, originalGlobals);
 });
 
-test("mount replacement disposes the old component owner without breaking shared text fan-out", () => {
-  const [value, setValue] = state(0);
-  const target = new FakeElement();
-  let executions = 0;
-  let cleanups = 0;
+test(
+  "mount replacement disposes the old component owner without breaking shared text fan-out",
+  () => {
+    const [value, setValue] = state(0);
+    const target = new FakeElement();
+    let executions = 0;
+    let cleanups = 0;
 
-  function Component() {
-    effect(() => {
-      value();
-      executions += 1;
-    });
-    onCleanup(() => {
-      cleanups += 1;
-    });
-    return jsx("span", { children: value });
-  }
+    function Component() {
+      effect(() => {
+        value();
+        executions += 1;
+      });
+      onCleanup(() => {
+        cleanups += 1;
+      });
+      return jsx("span", { children: value });
+    }
 
-  const first = jsx(Component, null);
-  mount(first, target as unknown as Element);
-  expect(executions).toBe(1);
+    const first = jsx(Component, null);
+    mount(first, target as unknown as Element);
+    expect(executions).toBe(1);
 
-  setValue(1);
-  expect(executions).toBe(2);
+    setValue(1);
+    expect(executions).toBe(2);
 
-  const second = jsx(Component, null);
-  expect(executions).toBe(3);
+    const second = jsx(Component, null);
+    expect(executions).toBe(3);
 
-  const dispose = mount(second, target as unknown as Element);
-  expect(cleanups).toBe(1);
+    const dispose = mount(second, target as unknown as Element);
+    expect(cleanups).toBe(1);
 
-  setValue(2);
-  expect(executions).toBe(4);
-  const span = target.firstChild as FakeElement;
-  expect((span.firstChild as FakeText).data).toBe("2");
+    setValue(2);
+    expect(executions).toBe(4);
+    const span = target.firstChild as FakeElement;
+    expect((span.firstChild as FakeText).data).toBe("2");
 
-  dispose();
-  expect(cleanups).toBe(2);
-  expect(target.childNodes).toHaveLength(0);
+    dispose();
+    expect(cleanups).toBe(2);
+    expect(target.childNodes).toHaveLength(0);
 
-  setValue(3);
-  expect(executions).toBe(4);
-});
+    setValue(3);
+    expect(executions).toBe(4);
+  },
+);
