@@ -119,7 +119,7 @@ mount(<App />, document.querySelector("#app")!);
 
 `show(condition, whenTrue, whenFalse?)` tracks only the boolean condition. Each branch is lazy: the inactive branch is not constructed, and branch-internal accessor reads do not accidentally become dependencies of the region selector.
 
-A switch creates the next branch under a dedicated child owner, disposes the previous branch and its effects/derived values/cleanups, then replaces only the nodes between two internal region anchors. There is no component rerender and no tree diff. Removing the containing component also disposes the active branch and the condition subscription.
+A switch first disposes the previous branch and its effects/derived values/cleanups, then creates the selected branch under a dedicated child owner and inserts only its nodes between two internal region anchors. There is no component rerender and no tree diff. Removing the containing component also disposes the active branch and the condition subscription.
 
 ## Performance lab
 
