@@ -16,6 +16,7 @@ The current reference runtime stays deliberately small:
 - `batch()` coalesces downstream reactive work; `untrack()` performs deliberate non-subscribing reads.
 - function components execute once inside an ownership scope, and `onCleanup()` tears down component-owned work.
 - `createContext()`, `provide()`, and `consume()` compose values through that ownership tree.
+- `show()` owns a precise dynamic region and switches only that branch when its boolean accessor changes.
 - JSX creates real DOM nodes immediately; there is no virtual DOM or component rerender loop.
 - a state accessor used as a JSX child updates its text nodes directly.
 - the Counter example proves the browser path.
@@ -40,6 +41,21 @@ mount(<Counter />, document.querySelector("#app")!);
 
 The component runs once. `{count}` passes the reactive accessor into the JSX runtime; the runtime subscribes the corresponding text node. A later compiler is expected to make this syntax more flexible and move more work from runtime to build time, without changing the tested behavior contract.
 
+## React compatibility boundary
+
+Rect deliberately shares some **authoring shapes** with React, but it does not implement a React-compatible API or runtime contract.
+
+A small presentational function component can often be moved with little source change because both systems understand JSX, function components, ordinary props, DOM attributes, and familiar event-handler props. That is source-shape similarity, not drop-in compatibility.
+
+Stateful code is already different:
+
+- React `useState()` returns a value plus setter and rerenders the component; Rect `state()` returns an accessor plus setter and does not rerender the component.
+- React conditionals such as `{visible && <Panel />}` are revisited by rerendering; Rect uses `show(visible, () => <Panel />)` so only that owned region changes.
+- React effects use hook ordering and commonly dependency arrays; Rect `effect()` discovers dependencies by reading accessors.
+- React context, memoization, reconciliation, keys, synthetic events, `ReactDOM.createRoot()`, and libraries that expect React internals are not compatibility contracts of Rect.
+
+So the practical answer is: **pure/static JSX can be close to mechanically portable; reactive React code is not drop-in source-compatible.** A compatibility adapter could be explored separately someday, but the Rect core should not acquire React's rerender and hook semantics merely to make that possible.
+
 ## Reactive composition
 
 Rect solves the common problems associated with React hooks without adopting React's rerender-oriented hook mechanism or dependency arrays.
@@ -53,6 +69,7 @@ import {
   mount,
   onCleanup,
   provide,
+  show,
   state,
 } from "@rect/core";
 
@@ -61,19 +78,31 @@ const Theme = createContext("system");
 function Summary() {
   const theme = consume(Theme);
   const [count, setCount] = state(0);
+  const [expanded, setExpanded] = state(false);
   const doubled = derived(() => count() * 2);
   const timer = window.setInterval(() => setCount((value) => value + 1), 1_000);
 
   onCleanup(() => window.clearInterval(timer));
 
   return (
-    <button
-      type="button"
-      data-theme={theme}
-      onClick={() => batch(() => setCount((value) => value + 1))}
-    >
-      Doubled: {doubled}
-    </button>
+    <section data-theme={theme}>
+      <button
+        type="button"
+        onClick={() =>
+          batch(() => {
+            setCount((value) => value + 1);
+            setExpanded((value) => !value);
+          })
+        }
+      >
+        Doubled: {doubled}
+      </button>
+      {show(
+        expanded,
+        () => <p>Expanded details</p>,
+        () => <p>Collapsed</p>,
+      )}
+    </section>
   );
 }
 
@@ -84,7 +113,13 @@ function App() {
 mount(<App />, document.querySelector("#app")!);
 ```
 
-`provide()` takes a callback because JSX children are currently constructed eagerly. The callback makes the provider's owner active while descendant components execute. The compiler may eventually make that authoring shape terser while preserving the same ownership semantics.
+`provide()` and `show()` take callbacks because JSX children are currently constructed eagerly. The callbacks ensure descendants are created under the correct owner only when that scope or branch is active. The compiler may eventually make those authoring shapes terser while preserving the same ownership semantics.
+
+## Conditional regions
+
+`show(condition, whenTrue, whenFalse?)` tracks only the boolean condition. Each branch is lazy: the inactive branch is not constructed, and branch-internal accessor reads do not accidentally become dependencies of the region selector.
+
+A switch creates the next branch under a dedicated child owner, disposes the previous branch and its effects/derived values/cleanups, then replaces only the nodes between two internal region anchors. There is no component rerender and no tree diff. Removing the containing component also disposes the active branch and the condition subscription.
 
 ## Performance lab
 
