@@ -25,6 +25,7 @@ type ReactiveEffect = {
 
 let activeEffect: ReactiveEffect | undefined;
 let activeOwner: ReactiveOwner | undefined;
+let activeFlushQueue: Set<ReactiveEffect> | undefined;
 let batchDepth = 0;
 let flushingEffects = false;
 
@@ -38,13 +39,16 @@ function cleanupEffect(effect: ReactiveEffect): void {
   effect.dependencies.clear();
 }
 
-function scheduleEffect(effect: ReactiveEffect): void {
-  if (!effect.active) return;
-  if (batchDepth > 0 || flushingEffects) {
-    pendingEffects.add(effect);
-    return;
+function queueEffect(effect: ReactiveEffect): void {
+  if (!effect.active || activeFlushQueue?.has(effect)) return;
+  pendingEffects.add(effect);
+}
+
+function notifySubscribers(subscribers: SubscriberSet): void {
+  for (const subscriber of subscribers) {
+    queueEffect(subscriber);
   }
-  effect.execute();
+  flushPendingEffects();
 }
 
 function flushPendingEffects(): void {
@@ -57,7 +61,9 @@ function flushPendingEffects(): void {
     while (pendingEffects.size > 0) {
       const queued = [...pendingEffects];
       pendingEffects.clear();
+      activeFlushQueue = new Set(queued);
       for (const reactiveEffect of queued) {
+        activeFlushQueue.delete(reactiveEffect);
         try {
           reactiveEffect.execute();
         } catch (error) {
@@ -67,8 +73,10 @@ function flushPendingEffects(): void {
           }
         }
       }
+      activeFlushQueue = undefined;
     }
   } finally {
+    activeFlushQueue = undefined;
     flushingEffects = false;
   }
 
@@ -199,9 +207,7 @@ export function state<T>(initial: T): readonly [Accessor<T>, Setter<T>] {
     if (Object.is(value, next)) return value;
 
     value = next;
-    for (const subscriber of [...subscribers]) {
-      scheduleEffect(subscriber);
-    }
+    notifySubscribers(subscribers);
     return value;
   };
 
@@ -231,9 +237,7 @@ export function derived<T>(compute: () => T): Accessor<T> {
       initialized = true;
       return;
     }
-    for (const subscriber of [...subscribers]) {
-      scheduleEffect(subscriber);
-    }
+    notifySubscribers(subscribers);
   });
 
   return read;
