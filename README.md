@@ -77,13 +77,23 @@ bun run benchmark:smoke
 bun run benchmark:state
 ```
 
-For runtime measurements, use an explicit fresh output directory:
+For portable process measurements, use an explicit fresh output directory:
 
 ```sh
 scripts/runtime-profile.sh .artifacts/runtime-profiler/state-001
 ```
 
-`runtime-profiler` captures measurements; it does not decide whether a change is better. Moonlight is kept as the baseline/candidate evaluator and can compare deterministic command behavior:
+The default `state.json` scenario stays process-only so runtime profiling remains usable on machines without native profiling permission. On a supported Linux host, the identical state-propagation workload can additionally collect bounded `perf` hotspot evidence with the opt-in scenario:
+
+```sh
+scripts/runtime-profile.sh \
+  .artifacts/runtime-profiler/state-hotspots-001 \
+  profiles/runtime-profiler/state-hotspots.json
+```
+
+Run `runtime-profiler detect` or `runtime-profiler plan --scenario profiles/runtime-profiler/state-hotspots.json` first when native collector availability is uncertain. If `native-perf` is unavailable, that is missing profiler evidence rather than a green hotspot result; use the process-only scenario instead of weakening the collector contract.
+
+`runtime-profiler` captures measurements and sampled source-level evidence; it does not decide whether a change is better. Moonlight is kept as the baseline/candidate evaluator and can compare deterministic command behavior:
 
 ```sh
 scripts/moonlight-compare.sh ../rect-baseline .

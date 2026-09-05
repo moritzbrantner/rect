@@ -1,0 +1,15 @@
+{
+  "schema_version": "runtime-profiler/scenario/v1",
+  "id": "rect-state-propagation-hotspots",
+  "target": {
+    "type": "command",
+    "program": "bun",
+    "args": ["run", "benchmark:state"]
+  },
+  "run": {
+    "warmup_iterations": 1,
+    "measurement_iterations": 5,
+    "timeout_seconds": 30
+  },
+  "collectors": ["process", "native-perf"]
+}
