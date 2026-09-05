@@ -6,7 +6,7 @@ Rect should do work proportional to the change whenever the dependency is knowab
 
 The project starts with the simplest executable semantics and progressively moves work out of the runtime. A compiler is a destination, not an excuse to invent an opaque runtime before the behavior is understood.
 
-## Stage 0
+## Reference runtime
 
 ```text
 TSX
@@ -17,17 +17,49 @@ Rect JSX runtime ───────► real DOM nodes
                               ▲
                               │ targeted updates
 state accessor ─► effect ─────┘
+       │
+       └────────► derived accessor
 ```
 
 There is no virtual DOM and no component rerender loop.
 
-For the Counter, JSX passes the `count` accessor itself as a child. The runtime recognizes a Rect accessor, creates one `Text` node, and tracks that accessor inside an effect. Updating `count` executes only that subscriber and mutates the text node.
+For the Counter, JSX passes the `count` accessor itself as a child. The runtime recognizes a Rect accessor, creates one `Text` node, and tracks that accessor inside an effect. Repeated uses of the same accessor share one text fan-out binding, so one reactive read and text conversion can drive multiple direct `Text.data` writes.
 
-## Ownership
+## Reactive composition
 
-The v0 DOM runtime associates reactive disposers with nodes it creates. `mount()` disposes the current mounted subtree before replacement and returns a disposer for the mounted root.
+`state()` is the mutable source primitive. `derived()` creates a read-only accessor whose dependencies are tracked and retracked automatically; consumers are notified only when the derived value changes according to `Object.is`.
 
-This is deliberately sufficient only for the current static-tree slice. Conditional and keyed regions must introduce explicit ownership so removed subtrees cannot retain reactive subscriptions.
+`effect()` tracks dependencies on every execution. `untrack()` temporarily suppresses dependency collection for deliberate incidental reads. `batch()` delays downstream effect execution until the outermost batch completes and deduplicates repeated invalidations of the same effect.
+
+Rect does not use dependency arrays, component rerenders, `useMemo`, or `useCallback`. The reference model keeps dependency discovery in accessors and moves static work toward the compiler instead.
+
+## Ownership and cleanup
+
+Every function component executes once inside a reactive owner scope. Owners form a parent/child tree that is separate from dependency tracking:
+
+- effects created while a component executes register with that component owner;
+- `derived()` inherits the same lifetime through its internal tracking effect;
+- `onCleanup()` registers arbitrary teardown such as timers, subscriptions, or external listeners;
+- disposing an owner recursively disposes child owners and owned effects before releasing the owner;
+- component owners are associated with the DOM result so `mount()` replacement/unmount tears down the corresponding reactive lifetime.
+
+The shared dynamic-text fan-out binding is deliberately node-owned rather than component-owned because one accessor may be rendered by nodes belonging to different component owners. Its effect lives until its last bound text node is disposed.
+
+A component that produces a `DocumentFragment` carries its owner disposer with that fragment. When the fragment is inserted, the disposer is transferred to the first concrete child, or to the receiving parent for an empty result. This avoids adding marker DOM solely for lifetime bookkeeping in the current static-tree slice.
+
+Conditional and keyed regions will need more precise region ownership so independently removed fragments dispose immediately rather than relying on their containing static owner.
+
+## Context
+
+`createContext()`, `provide()`, and `consume()` use the owner tree rather than a global stack. A provider creates a child owner carrying the context value, and descendants resolve the nearest matching value.
+
+JSX children are currently constructed eagerly, so `provide()` intentionally accepts a callback:
+
+```tsx
+return provide(Theme, "dark", () => <Toolbar />);
+```
+
+The callback ensures descendant components execute while the provider owner is active. A future compiler may provide friendlier syntax without changing the ownership semantics.
 
 ## Compiler direction
 
@@ -55,15 +87,16 @@ Performance evaluation only follows parity.
 
 ## Public surface discipline
 
-Stage 0 intentionally exposes only:
+The current private `0.0.0` surface exposes:
 
-- `state`;
-- `effect`;
-- `mount`;
-- `Fragment`;
+- `state` and `derived`;
+- `effect`, `batch`, and `untrack`;
+- `onCleanup`;
+- `createContext`, `provide`, and `consume`;
+- `mount` and `Fragment`;
 - supporting TypeScript types.
 
-Names and signatures may still change. The package stays private at `0.0.0` until the semantics survive the next compiler/control-flow stages.
+Names and signatures may still change. The package stays private at `0.0.0` until the semantics survive the compiler and control-flow stages.
 
 ## Performance architecture
 
