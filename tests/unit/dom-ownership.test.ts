@@ -231,6 +231,39 @@ test("show switches branches and disposes inactive branch owners immediately", (
   expect(falseMounts).toBe(1);
 });
 
+test("show disposes the old branch before constructing its replacement", () => {
+  const [visible, setVisible] = state(true);
+  const [value, setValue] = state(0);
+  const target = new FakeElement();
+  const seen: number[] = [];
+
+  function TrueBranch() {
+    effect(() => {
+      seen.push(value());
+    });
+    return jsx("span", { children: "true" });
+  }
+
+  function App() {
+    return show(
+      visible,
+      () => jsx(TrueBranch, null),
+      () => {
+        setValue(1);
+        return jsx("span", { children: "false" });
+      },
+    );
+  }
+
+  const dispose = mount(jsx(App, null), target as unknown as Element);
+  expect(seen).toEqual([0]);
+
+  setVisible(false);
+  expect(seen).toEqual([0]);
+
+  dispose();
+});
+
 test("show tracks only its condition and not incidental branch reads", () => {
   const [visible] = state(true);
   const [incidental, setIncidental] = state(0);
