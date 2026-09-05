@@ -80,7 +80,7 @@ function disposeTree(node: Node): void {
 }
 
 function disposeDetachedTree(root: Node): void {
-  for (const child of root.childNodes) {
+  for (const child of [...root.childNodes]) {
     disposeTree(child);
   }
   disposeNode(root);
