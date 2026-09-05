@@ -1,13 +1,6 @@
 import { afterAll, expect, test } from "bun:test";
 
-import {
-  consume,
-  createContext,
-  effect,
-  onCleanup,
-  provide,
-  state,
-} from "../../src/reactivity.ts";
+import { consume, createContext, effect, onCleanup, provide, state } from "../../src/reactivity.ts";
 
 class FakeNode {
   childNodes: FakeNode[] = [];
@@ -205,11 +198,7 @@ test("show switches branches and disposes inactive branch owners immediately", (
   }
 
   function App() {
-    return show(
-      visible,
-      () => jsx(TrueBranch, null),
-      () => jsx(FalseBranch, null),
-    );
+    return show(visible, () => jsx(TrueBranch, null), () => jsx(FalseBranch, null));
   }
 
   const dispose = mount(jsx(App, null), target as unknown as Element);
@@ -282,9 +271,7 @@ test("show preserves owner-tree context when a branch is created later", () => {
   }
 
   function App() {
-    return provide(theme, "dark", () =>
-      show(visible, () => jsx(ThemedBranch, null)),
-    );
+    return provide(theme, "dark", () => show(visible, () => jsx(ThemedBranch, null)));
   }
 
   const dispose = mount(jsx(App, null), target as unknown as Element);
