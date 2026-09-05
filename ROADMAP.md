@@ -47,16 +47,29 @@ The first transform should be intentionally boring:
 
 Do not add a general virtual DOM as an intermediate representation.
 
-## Stage 2 — derived values and effects
+## Stage 2 — reactive composition and ownership
 
-Add an explicit `derived()` primitive or prove that compiler-derived expressions can cover the useful cases.
+The reference runtime now owns the first hooks-equivalent composition slice without adopting React hook semantics:
+
+- `derived()` for read-only computed accessors with automatic dependency retracking;
+- component owner scopes that recursively dispose owned effects and derived tracking;
+- `onCleanup()` for external lifetime teardown;
+- `batch()` for deduplicated downstream propagation;
+- `untrack()` for deliberate non-subscribing reads;
+- owner-tree context via `createContext()`, `provide()`, and `consume()`.
 
 Required properties:
 
 - deterministic dependency tracking;
 - no dependency arrays;
 - no manual memoization API;
-- clear disposal/ownership rules.
+- no component rerender loop;
+- clear disposal/ownership rules;
+- context lifetime follows ownership rather than a global mutable stack.
+
+The compiler may later specialize derived expressions and provider syntax, but the reference behavior remains the differential oracle.
+
+Exit condition: branch-dependent derived values, batching, non-tracked reads, owner disposal, cleanup, and context inheritance have deterministic tests; mounted component teardown releases owned subscriptions.
 
 ## Stage 3 — control flow
 
@@ -64,7 +77,9 @@ Implement one primitive at a time:
 
 1. conditional regions;
 2. keyed collections;
-3. nested ownership/disposal.
+3. region-specific ownership/disposal for independently removed fragments.
+
+The base component owner tree already exists. Control-flow work must make ownership more precise rather than introducing a second lifetime model.
 
 For keyed collections, make the algorithm explicit and benchmark adversarial cases rather than hiding a generic tree diff behind JSX.
 
