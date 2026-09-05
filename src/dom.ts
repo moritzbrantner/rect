@@ -1,4 +1,12 @@
-import { effect, isAccessor, type Accessor } from "./reactivity.ts";
+import {
+  createOwner,
+  disposeOwner,
+  effect,
+  getOwner,
+  isAccessor,
+  runWithOwner,
+  type Accessor,
+} from "./reactivity.ts";
 
 export type Child =
   | Node
@@ -37,10 +45,19 @@ function registerDisposer(node: Node, dispose: Disposer): void {
   existing.add(dispose);
 }
 
-function disposeTree(node: Node): void {
-  for (const child of [...node.childNodes]) {
-    disposeTree(child);
+function moveDisposers(from: Node, to: Node): void {
+  const disposers = nodeDisposers.get(from);
+  if (!disposers) return;
+
+  nodeDisposers.delete(from);
+  if (typeof disposers === "function") {
+    registerDisposer(to, disposers);
+    return;
   }
+  for (const dispose of disposers) registerDisposer(to, dispose);
+}
+
+function disposeNode(node: Node): void {
   const disposers = nodeDisposers.get(node);
   if (!disposers) return;
 
@@ -50,6 +67,13 @@ function disposeTree(node: Node): void {
     for (const dispose of disposers) dispose();
   }
   nodeDisposers.delete(node);
+}
+
+function disposeTree(node: Node): void {
+  for (const child of [...node.childNodes]) {
+    disposeTree(child);
+  }
+  disposeNode(node);
 }
 
 function textValue(value: unknown): string {
@@ -67,11 +91,13 @@ function createDynamicTextBinding(accessor: Accessor<unknown>): DynamicTextBindi
     nodes: new Set(),
     value: "",
   };
-  binding.dispose = effect(() => {
-    const value = textValue(accessor());
-    binding.value = value;
-    for (const node of binding.nodes) node.data = value;
-  });
+  binding.dispose = runWithOwner(undefined, () =>
+    effect(() => {
+      const value = textValue(accessor());
+      binding.value = value;
+      for (const node of binding.nodes) node.data = value;
+    }),
+  );
   dynamicTextBindings.set(accessor, binding);
   return binding;
 }
@@ -97,6 +123,12 @@ function appendChild(parent: Node, child: Child): void {
 
   if (Array.isArray(child)) {
     for (const nested of child) appendChild(parent, nested);
+    return;
+  }
+
+  if (child instanceof DocumentFragment) {
+    moveDisposers(child, child.firstChild ?? parent);
+    parent.appendChild(child);
     return;
   }
 
@@ -184,11 +216,25 @@ export function jsx(
   }
 
   if (typeof type === "function") {
-    const fragment = document.createDocumentFragment();
-    appendChild(fragment, type(normalizedProps));
-    if (fragment.childNodes.length === 1) {
-      return fragment.firstChild as Node;
+    const owner = createOwner(getOwner());
+    let child: Child;
+    try {
+      child = runWithOwner(owner, () => type(normalizedProps));
+    } catch (error) {
+      disposeOwner(owner);
+      throw error;
     }
+
+    const fragment = document.createDocumentFragment();
+    appendChild(fragment, child);
+    const dispose = () => disposeOwner(owner);
+    if (fragment.childNodes.length === 1) {
+      const node = fragment.firstChild as Node;
+      moveDisposers(fragment, node);
+      registerDisposer(node, dispose);
+      return node;
+    }
+    registerDisposer(fragment, dispose);
     return fragment;
   }
 
@@ -209,6 +255,7 @@ export function mount(child: Child, target: Element): () => void {
   for (const existing of [...target.childNodes]) {
     disposeTree(existing);
   }
+  disposeNode(target);
   target.replaceChildren();
   appendChild(target, child);
 
@@ -216,6 +263,7 @@ export function mount(child: Child, target: Element): () => void {
     for (const existing of [...target.childNodes]) {
       disposeTree(existing);
     }
+    disposeNode(target);
     target.replaceChildren();
   };
 }
