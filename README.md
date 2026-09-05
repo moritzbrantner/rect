@@ -8,12 +8,16 @@ The premise is intentionally narrow: keep the component ergonomics that make Rea
 
 ## Current slice
 
-The first vertical slice is deliberately small:
+The current reference runtime stays deliberately small:
 
 - `state()` creates a reactive accessor and setter.
-- `effect()` tracks the state read during each execution.
-- JSX creates real DOM nodes immediately; there is no virtual DOM.
-- a state accessor used as a JSX child owns one text node and updates that text node directly.
+- `derived()` creates a read-only computed accessor with automatic dependency tracking.
+- `effect()` tracks the state and derived values read during each execution.
+- `batch()` coalesces downstream reactive work; `untrack()` performs deliberate non-subscribing reads.
+- function components execute once inside an ownership scope, and `onCleanup()` tears down component-owned work.
+- `createContext()`, `provide()`, and `consume()` compose values through that ownership tree.
+- JSX creates real DOM nodes immediately; there is no virtual DOM or component rerender loop.
+- a state accessor used as a JSX child updates its text nodes directly.
 - the Counter example proves the browser path.
 - a deterministic state-propagation workload establishes the first performance-evidence target.
 - a Rect-built GitHub Pages performance lab exercises the browser runtime and compares bounded equivalent fixtures.
@@ -35,6 +39,52 @@ mount(<Counter />, document.querySelector("#app")!);
 ```
 
 The component runs once. `{count}` passes the reactive accessor into the JSX runtime; the runtime subscribes the corresponding text node. A later compiler is expected to make this syntax more flexible and move more work from runtime to build time, without changing the tested behavior contract.
+
+## Reactive composition
+
+Rect solves the common problems associated with React hooks without adopting React's rerender-oriented hook mechanism or dependency arrays.
+
+```tsx
+import {
+  batch,
+  consume,
+  createContext,
+  derived,
+  mount,
+  onCleanup,
+  provide,
+  state,
+} from "@rect/core";
+
+const Theme = createContext("system");
+
+function Summary() {
+  const theme = consume(Theme);
+  const [count, setCount] = state(0);
+  const doubled = derived(() => count() * 2);
+  const timer = window.setInterval(() => setCount((value) => value + 1), 1_000);
+
+  onCleanup(() => window.clearInterval(timer));
+
+  return (
+    <button
+      type="button"
+      data-theme={theme}
+      onClick={() => batch(() => setCount((value) => value + 1))}
+    >
+      Doubled: {doubled}
+    </button>
+  );
+}
+
+function App() {
+  return provide(Theme, "dark", () => <Summary />);
+}
+
+mount(<App />, document.querySelector("#app")!);
+```
+
+`provide()` takes a callback because JSX children are currently constructed eagerly. The callback makes the provider's owner active while descendant components execute. The compiler may eventually make that authoring shape terser while preserving the same ownership semantics.
 
 ## Performance lab
 
