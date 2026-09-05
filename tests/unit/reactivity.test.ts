@@ -143,6 +143,28 @@ describe("derived", () => {
 
     expect(seen).toEqual([0, 1]);
   });
+
+  test("stops owned tracking after owner disposal", () => {
+    const [value, setValue] = state(1);
+    const owner = createOwner(undefined);
+    let computations = 0;
+    const doubled = runWithOwner(owner, () =>
+      derived(() => {
+        computations += 1;
+        return value() * 2;
+      }),
+    );
+
+    expect(doubled()).toBe(2);
+    setValue(2);
+    expect(doubled()).toBe(4);
+    expect(computations).toBe(2);
+
+    disposeOwner(owner);
+    setValue(3);
+    expect(doubled()).toBe(4);
+    expect(computations).toBe(2);
+  });
 });
 
 describe("reactive composition", () => {
@@ -160,6 +182,22 @@ describe("reactive composition", () => {
     });
 
     expect(seen).toEqual(["0:0", "1:2"]);
+  });
+
+  test("deduplicates overlapping raw and derived dependencies", () => {
+    const [count, setCount] = state(0);
+    const doubled = derived(() => count() * 2);
+    const seen: string[] = [];
+    effect(() => {
+      seen.push(`${count()}:${doubled()}`);
+    });
+
+    batch(() => {
+      setCount(1);
+      setCount(2);
+    });
+
+    expect(seen).toEqual(["0:0", "2:4"]);
   });
 
   test("untrack reads state without subscribing the active effect", () => {
