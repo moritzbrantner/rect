@@ -198,7 +198,11 @@ test("show switches branches and disposes inactive branch owners immediately", (
   }
 
   function App() {
-    return show(visible, () => jsx(TrueBranch, null), () => jsx(FalseBranch, null));
+    return show(
+      visible,
+      () => jsx(TrueBranch, null),
+      () => jsx(FalseBranch, null),
+    );
   }
 
   const dispose = mount(jsx(App, null), target as unknown as Element);
