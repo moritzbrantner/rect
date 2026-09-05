@@ -14,12 +14,15 @@ Rect is an experimental modern UI framework. Optimize for a small understandable
 
 ## Current execution model
 
-- Components are ordinary functions that execute when JSX constructs them.
+- Components are ordinary functions that execute once when JSX constructs them.
+- Each function component executes inside an owner scope; owned effects, derived tracking, child owners, and `onCleanup()` teardown end with that component lifetime.
 - JSX creates real DOM nodes.
-- `state()` returns a tracked accessor plus setter.
-- A reactive accessor used directly as a JSX child currently represents dynamic text.
-- `effect()` retracks dependencies on every execution.
-- The compiler is intentionally deferred until the runtime semantics have tests and evidence.
+- `state()` returns a tracked accessor plus setter; `derived()` returns a read-only tracked accessor.
+- `effect()` retracks dependencies on every execution; `batch()` deduplicates downstream execution and `untrack()` suppresses deliberate incidental dependency collection.
+- A reactive accessor used directly as a JSX child represents dynamic text. Repeated uses of the same accessor share the fan-out tracking work while retaining direct text-node writes.
+- `createContext()` / `provide()` / `consume()` resolve values through the owner tree. `provide()` uses a callback because JSX children are currently eager.
+- There are no component rerenders, dependency arrays, manual memoization hooks, or a virtual DOM.
+- The compiler is intentionally deferred until the reference runtime semantics have tests and evidence.
 
 Preserve these semantics unless a PR explicitly changes the architecture contract.
 
@@ -68,4 +71,4 @@ A compiler optimization must preserve a small non-compiler reference behavior so
 
 ## Next decision horizon
 
-The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX, derived values, conditional regions, and keyed collections. Do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.
+The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX, conditional regions, keyed collections, and progressively more precise region ownership. Do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.
