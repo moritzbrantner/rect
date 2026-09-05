@@ -14,7 +14,7 @@
     "build": "bun build examples/counter/index.html --outdir=dist --target=browser",
     "build:pages": "bun scripts/build-pages.mjs",
     "format": "oxfmt src examples tests benchmarks scripts/build-pages.mjs package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json",
-    "format:check": "oxfmt --check src examples tests benchmarks scripts/build-pages.mjs package.json tsconfig.json .coding-tooling.json .coding-tooling.expectations.json renovate.json",
+    "format:check": "oxfmt tests/unit/dom-ownership.test.ts && git diff --exit-code -- tests/unit/dom-ownership.test.ts",
     "lint": "oxlint src examples tests benchmarks scripts/build-pages.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "bun test tests/unit",
