@@ -13,15 +13,28 @@ export type Child =
 
 export type Component = (props: Record<string, unknown>) => Child;
 
-const nodeDisposers = new WeakMap<Node, Set<() => void>>();
+type Disposer = () => void;
+type NodeDisposers = Disposer | Set<Disposer>;
+type DynamicTextBinding = {
+  dispose?: Disposer;
+  nodes: Set<Text>;
+  value: string;
+};
 
-function registerDisposer(node: Node, dispose: () => void): void {
+const nodeDisposers = new WeakMap<Node, NodeDisposers>();
+const dynamicTextBindings = new WeakMap<Accessor<unknown>, DynamicTextBinding>();
+
+function registerDisposer(node: Node, dispose: Disposer): void {
   const existing = nodeDisposers.get(node);
-  if (existing) {
-    existing.add(dispose);
+  if (!existing) {
+    nodeDisposers.set(node, dispose);
     return;
   }
-  nodeDisposers.set(node, new Set([dispose]));
+  if (typeof existing === "function") {
+    nodeDisposers.set(node, new Set([existing, dispose]));
+    return;
+  }
+  existing.add(dispose);
 }
 
 function disposeTree(node: Node): void {
@@ -31,7 +44,11 @@ function disposeTree(node: Node): void {
   const disposers = nodeDisposers.get(node);
   if (!disposers) return;
 
-  for (const dispose of disposers) dispose();
+  if (typeof disposers === "function") {
+    disposers();
+  } else {
+    for (const dispose of disposers) dispose();
+  }
   nodeDisposers.delete(node);
 }
 
@@ -45,12 +62,31 @@ function textValue(value: unknown): string {
   throw new TypeError("Rect v0 dynamic JSX children must resolve to text-like values.");
 }
 
-function dynamicText(accessor: Accessor<unknown>): Text {
-  const node = document.createTextNode("");
-  const dispose = effect(() => {
-    node.data = textValue(accessor());
+function createDynamicTextBinding(accessor: Accessor<unknown>): DynamicTextBinding {
+  const binding: DynamicTextBinding = {
+    nodes: new Set(),
+    value: "",
+  };
+  binding.dispose = effect(() => {
+    const value = textValue(accessor());
+    binding.value = value;
+    for (const node of binding.nodes) node.data = value;
   });
-  registerDisposer(node, dispose);
+  dynamicTextBindings.set(accessor, binding);
+  return binding;
+}
+
+function dynamicText(accessor: Accessor<unknown>): Text {
+  const binding = dynamicTextBindings.get(accessor) ?? createDynamicTextBinding(accessor);
+  const node = document.createTextNode(binding.value);
+  binding.nodes.add(node);
+  registerDisposer(node, () => {
+    binding.nodes.delete(node);
+    if (binding.nodes.size !== 0) return;
+
+    binding.dispose?.();
+    dynamicTextBindings.delete(accessor);
+  });
   return node;
 }
 
@@ -157,8 +193,10 @@ export function jsx(
   }
 
   const element = document.createElement(type);
-  for (const [key, value] of Object.entries(normalizedProps)) {
-    applyProp(element, key, value);
+  for (const key in normalizedProps) {
+    if (Object.hasOwn(normalizedProps, key)) {
+      applyProp(element, key, normalizedProps[key]);
+    }
   }
   appendChild(element, normalizedProps.children as Child);
   return element;
