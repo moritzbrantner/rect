@@ -17,7 +17,7 @@ This workload is useful because Rect v0 has an explicit semantic contract for ex
 
 ## Fixtures
 
-- **Rect** uses the reference runtime with one tracked text node per cell. No Rect compiler exists yet.
+- **Rect** uses the reference runtime with one text node per cell. Repeated uses of the same accessor share one tracked fan-out effect and one text conversion per update. No Rect compiler exists yet.
 - **Vanilla DOM** is the low-level imperative reference.
 - **React 19.2.8** is built with Bun 1.4's built-in React Compiler and measured with synchronous `flushSync` updates.
 - **Preact 10.29.8** uses the real renderer with its debounce scheduler made synchronous for the measurement boundary.

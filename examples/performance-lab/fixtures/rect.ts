@@ -4,11 +4,11 @@ import { state } from "../../../src/reactivity.ts";
 export default {
   label: "Rect",
   version: "0.0.0",
-  implementation: "Rect reference runtime · direct DOM + tracked text nodes",
+  implementation: "Rect reference runtime · direct DOM + shared tracked text fan-out",
   assetUrl: import.meta.url,
   notes: [
     "Rect v0 reference runtime: no compiler transform is used for this fixture.",
-    "One state accessor fans out to one tracked text node per benchmark cell.",
+    "Repeated uses of one accessor share reactive tracking and one text conversion per update.",
   ],
   mount(target: HTMLElement, nodeCount: number) {
     const [value, setValue] = state(0);
