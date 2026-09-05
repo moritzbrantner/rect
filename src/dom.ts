@@ -5,7 +5,9 @@ import {
   getOwner,
   isAccessor,
   runWithOwner,
+  untrack,
   type Accessor,
+  type ReactiveOwner,
 } from "./reactivity.ts";
 
 export type Child =
@@ -20,6 +22,7 @@ export type Child =
   | readonly Child[];
 
 export type Component = (props: Record<string, unknown>) => Child;
+export type ConditionalBranch = () => Child;
 
 type Disposer = () => void;
 type NodeDisposers = Disposer | Set<Disposer>;
@@ -74,6 +77,13 @@ function disposeTree(node: Node): void {
     disposeTree(child);
   }
   disposeNode(node);
+}
+
+function disposeDetachedTree(root: Node): void {
+  for (const child of root.childNodes) {
+    disposeTree(child);
+  }
+  disposeNode(root);
 }
 
 function textValue(value: unknown): string {
@@ -201,7 +211,116 @@ function applyProp(element: HTMLElement, key: string, value: unknown): void {
   element.setAttribute(key, value === true ? "" : String(value));
 }
 
+function disposeConditionalBranch(
+  start: Comment,
+  end: Comment,
+  owner: ReactiveOwner | undefined,
+): void {
+  let firstError: unknown;
+  let hasError = false;
+  let node = start.nextSibling;
+
+  while (node && node !== end) {
+    const next = node.nextSibling;
+    try {
+      disposeTree(node);
+    } catch (error) {
+      if (!hasError) {
+        firstError = error;
+        hasError = true;
+      }
+    }
+    node.parentNode?.removeChild(node);
+    node = next;
+  }
+
+  if (owner) {
+    try {
+      disposeOwner(owner);
+    } catch (error) {
+      if (!hasError) {
+        firstError = error;
+        hasError = true;
+      }
+    }
+  }
+
+  if (hasError) throw firstError;
+}
+
+function createConditionalBranch(
+  parentOwner: ReactiveOwner | undefined,
+  branch: ConditionalBranch,
+): { owner: ReactiveOwner; fragment: DocumentFragment } {
+  const owner = createOwner(parentOwner);
+  const fragment = document.createDocumentFragment();
+
+  try {
+    const child = runWithOwner(owner, () => untrack(branch));
+    appendChild(fragment, child);
+    return { owner, fragment };
+  } catch (error) {
+    disposeDetachedTree(fragment);
+    disposeOwner(owner);
+    throw error;
+  }
+}
+
 export const Fragment = Symbol("rect.fragment");
+
+export function show(
+  condition: Accessor<boolean>,
+  whenTrue: ConditionalBranch,
+  whenFalse: ConditionalBranch = () => null,
+): Node {
+  const parentOwner = getOwner();
+  const fragment = document.createDocumentFragment();
+  const start = document.createComment("rect:show");
+  const end = document.createComment("/rect:show");
+  fragment.appendChild(start);
+  fragment.appendChild(end);
+
+  let activeValue: boolean | undefined;
+  let activeBranchOwner: ReactiveOwner | undefined;
+
+  const replaceBranch = (nextValue: boolean) => {
+    const next = createConditionalBranch(parentOwner, nextValue ? whenTrue : whenFalse);
+    const parent = end.parentNode;
+    if (!parent) {
+      disposeDetachedTree(next.fragment);
+      disposeOwner(next.owner);
+      throw new Error("Rect conditional region lost its DOM boundary.");
+    }
+
+    try {
+      disposeConditionalBranch(start, end, activeBranchOwner);
+      parent.insertBefore(next.fragment, end);
+    } catch (error) {
+      disposeDetachedTree(next.fragment);
+      disposeOwner(next.owner);
+      throw error;
+    }
+
+    activeBranchOwner = next.owner;
+    activeValue = nextValue;
+  };
+
+  const stop = effect(() => {
+    const nextValue = condition();
+    if (activeValue === nextValue) return;
+    replaceBranch(nextValue);
+  });
+
+  registerDisposer(start, () => {
+    stop();
+    const owner = activeBranchOwner;
+    activeBranchOwner = undefined;
+    activeValue = undefined;
+    disposeConditionalBranch(start, end, owner);
+  });
+
+  return fragment;
+}
 
 export function jsx(
   type: string | typeof Fragment | Component,
