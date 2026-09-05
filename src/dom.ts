@@ -284,16 +284,18 @@ export function show(
   let activeBranchOwner: ReactiveOwner | undefined;
 
   const replaceBranch = (nextValue: boolean) => {
-    const next = createConditionalBranch(parentOwner, nextValue ? whenTrue : whenFalse);
     const parent = end.parentNode;
     if (!parent) {
-      disposeDetachedTree(next.fragment);
-      disposeOwner(next.owner);
       throw new Error("Rect conditional region lost its DOM boundary.");
     }
 
+    const previousOwner = activeBranchOwner;
+    activeBranchOwner = undefined;
+    activeValue = undefined;
+    disposeConditionalBranch(start, end, previousOwner);
+
+    const next = createConditionalBranch(parentOwner, nextValue ? whenTrue : whenFalse);
     try {
-      disposeConditionalBranch(start, end, activeBranchOwner);
       parent.insertBefore(next.fragment, end);
     } catch (error) {
       disposeDetachedTree(next.fragment);
