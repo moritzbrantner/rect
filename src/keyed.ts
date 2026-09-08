@@ -169,7 +169,7 @@ function createRegion<T, K extends Key>(
 
     let reference: Node = end;
     for (let index = nextRecords.length - 1; index >= 0; index -= 1) {
-      const record = nextRecords[index];
+      const record = nextRecords[index]!;
       if (prepared.has(record.key)) {
         parent.insertBefore(record.carrier, reference);
       } else {
