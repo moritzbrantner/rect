@@ -1,5 +1,5 @@
-export { Fragment, mount, show } from "./dom.ts";
-export type { Child, Component, ConditionalBranch } from "./dom.ts";
+export { Fragment, keyed, mount, show } from "./dom.ts";
+export type { Child, Component, ConditionalBranch, Key, KeyedRenderer } from "./dom.ts";
 export {
   batch,
   consume,
