@@ -98,7 +98,8 @@ Object.assign(globalThis, {
   },
 });
 
-const { jsx, keyed, mount } = await import("../../src/dom.ts");
+const { jsx, mount } = await import("../../src/dom.ts");
+const { keyed } = await import("../../src/keyed.ts");
 
 afterAll(() => {
   Object.assign(globalThis, originalGlobals);
