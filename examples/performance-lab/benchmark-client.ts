@@ -5,12 +5,18 @@ import {
   type ErrorMessage,
   type FixtureMessage,
   type FrameworkId,
+  type KeyedBenchmarkConfig,
+  type KeyedBenchmarkResult,
+  type KeyedResultMessage,
   type ReadyMessage,
   type ResultMessage,
-  type RunMessage,
 } from "./benchmark-contract.ts";
 
 const fixtureTimeoutMs = 60_000;
+
+type FixtureRunConfig = BenchmarkConfig | KeyedBenchmarkConfig;
+type FixtureRunResult = BenchmarkResult | KeyedBenchmarkResult;
+type ResultFixtureMessage = ResultMessage | KeyedResultMessage;
 
 function isFrameworkId(value: string | null): value is FrameworkId {
   return frameworkIds.includes(value as FrameworkId);
@@ -22,6 +28,7 @@ function isFixtureMessage(value: unknown): value is FixtureMessage {
   return (
     type === "rect:benchmark-ready" ||
     type === "rect:benchmark-result" ||
+    type === "rect:keyed-benchmark-result" ||
     type === "rect:benchmark-error"
   );
 }
@@ -32,10 +39,12 @@ function fixtureUrl(framework: FrameworkId): string {
   return url.href;
 }
 
-export async function runFrameworkBenchmark(
+async function runFixture<Result extends FixtureRunResult>(
   framework: FrameworkId,
-  config: BenchmarkConfig,
-): Promise<BenchmarkResult> {
+  config: FixtureRunConfig,
+  requestType: "rect:benchmark-run" | "rect:keyed-benchmark-run",
+  resultType: "rect:benchmark-result" | "rect:keyed-benchmark-result",
+): Promise<Result> {
   return await new Promise((resolve, reject) => {
     const iframe = document.createElement("iframe");
     iframe.className = "benchmark-frame";
@@ -70,19 +79,22 @@ export async function runFrameworkBenchmark(
         const message = event.data as ReadyMessage;
         if (ready || message.framework !== framework || !isFrameworkId(message.framework)) return;
         ready = true;
-        const request: RunMessage = { type: "rect:benchmark-run", runId, config };
-        iframe.contentWindow?.postMessage(request, window.location.origin);
+        iframe.contentWindow?.postMessage(
+          { type: requestType, runId, config },
+          window.location.origin,
+        );
         return;
       }
 
-      if (event.data.type === "rect:benchmark-result") {
-        const message = event.data as ResultMessage;
+      if (event.data.type === resultType) {
+        const message = event.data as ResultFixtureMessage;
         if (message.runId !== runId) return;
         finish();
-        resolve(message.result);
+        resolve(message.result as Result);
         return;
       }
 
+      if (event.data.type !== "rect:benchmark-error") return;
       const message = event.data as ErrorMessage;
       if (message.runId === runId) fail(message.message);
     };
@@ -95,4 +107,27 @@ export async function runFrameworkBenchmark(
     window.addEventListener("message", onMessage);
     document.body.appendChild(iframe);
   });
+}
+
+export async function runFrameworkBenchmark(
+  framework: FrameworkId,
+  config: BenchmarkConfig,
+): Promise<BenchmarkResult> {
+  return await runFixture<BenchmarkResult>(
+    framework,
+    config,
+    "rect:benchmark-run",
+    "rect:benchmark-result",
+  );
+}
+
+export async function runRectKeyedBenchmark(
+  config: KeyedBenchmarkConfig,
+): Promise<KeyedBenchmarkResult> {
+  return await runFixture<KeyedBenchmarkResult>(
+    "rect",
+    config,
+    "rect:keyed-benchmark-run",
+    "rect:keyed-benchmark-result",
+  );
 }
