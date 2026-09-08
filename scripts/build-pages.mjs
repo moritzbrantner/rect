@@ -34,6 +34,7 @@ await build({
 
 const fixtures = [
   { entrypoint: "examples/performance-lab/fixtures/rect.ts" },
+  { entrypoint: "examples/performance-lab/fixtures/rect-keyed.ts" },
   { entrypoint: "examples/performance-lab/fixtures/vanilla.ts" },
   {
     entrypoint: "examples/performance-lab/fixtures/react.jsx",
