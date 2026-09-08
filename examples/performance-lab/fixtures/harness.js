@@ -76,14 +76,14 @@ function assertKeyedFixture(beforeEntries, afterEntries, expectedEntries) {
     const expected = expectedEntries[index];
     const actual = afterEntries[index];
     if (!expected || !actual) throw new Error("Keyed correctness check lost an expected row.");
-    if (actual.key !== expected.key) {
+    if (actual.key !== expected.id) {
       throw new Error(
-        `Keyed order check failed at ${index}: expected ${expected.key}, got ${actual.key}.`,
+        `Keyed order check failed at ${index}: expected ${expected.id}, got ${actual.key}.`,
       );
     }
     if (actual.text !== `${index}:${expected.label}`) {
       throw new Error(
-        `Keyed reactive text check failed for ${expected.key}: expected ${index}:${expected.label}, got ${actual.text}.`,
+        `Keyed reactive text check failed for ${expected.id}: expected ${index}:${expected.label}, got ${actual.text}.`,
       );
     }
 
@@ -160,11 +160,12 @@ async function run(config) {
 function runKeyedOperation(instance, scenario, sample) {
   instance.resetKeyed();
   const beforeEntries = instance.readKeyedEntries();
+  const expectedEntries = instance.prepareKeyed(scenario, sample);
   const observer = new MutationObserver(() => undefined);
   observer.observe(target, { subtree: true, characterData: true, childList: true });
 
   const start = performance.now();
-  const expectedEntries = instance.applyKeyed(scenario, sample);
+  instance.applyKeyed(expectedEntries);
   const latencyMs = performance.now() - start;
   const mutationRecords = observer.takeRecords().length;
   observer.disconnect();
@@ -175,18 +176,24 @@ function runKeyedOperation(instance, scenario, sample) {
 }
 
 async function runKeyed(config) {
-  if (framework !== "rect" || typeof adapter.mountKeyed !== "function") {
+  if (framework !== "rect") {
     throw new Error("Keyed benchmark is available only for the Rect reference fixture.");
   }
-  if (!Array.isArray(adapter.keyedScenarios) || adapter.keyedScenarios.length === 0) {
+
+  const keyedAdapterModule = await import("./assets/rect-keyed.js");
+  const keyedAdapter = keyedAdapterModule.default;
+  if (typeof keyedAdapter.mount !== "function") {
+    throw new Error("Rect keyed benchmark has no mount implementation.");
+  }
+  if (!Array.isArray(keyedAdapter.keyedScenarios) || keyedAdapter.keyedScenarios.length === 0) {
     throw new Error("Rect keyed benchmark has no declared scenarios.");
   }
 
   target.replaceChildren();
-  const instance = adapter.mountKeyed(target, config.items);
+  const instance = keyedAdapter.mount(target, config.items);
   try {
     const scenarios = [];
-    for (const scenario of adapter.keyedScenarios) {
+    for (const scenario of keyedAdapter.keyedScenarios) {
       for (let sample = 0; sample < config.warmupSamples; sample += 1) {
         runKeyedOperation(instance, scenario, sample);
       }
@@ -233,7 +240,9 @@ window.addEventListener("message", async (event) => {
 
   try {
     const result =
-      message.type === "rect:keyed-benchmark-run" ? await runKeyed(message.config) : await run(message.config);
+      message.type === "rect:keyed-benchmark-run"
+        ? await runKeyed(message.config)
+        : await run(message.config);
     window.parent.postMessage(
       {
         type:
