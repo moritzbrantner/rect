@@ -1,5 +1,6 @@
 import { jsx, mount, type Child } from "./dom.ts";
 import {
+  batch,
   effect,
   getOwner,
   onCleanup,
@@ -125,7 +126,7 @@ function createRegion<T, K extends Key>(
   let recordsByKey = new Map<K, KeyedRecord<T, K>>();
   let orderedRecords: KeyedRecord<T, K>[] = [];
 
-  const stop = effect(() => {
+  const reconcile = () => {
     const descriptors = createDescriptors(items(), keyOf);
     const prepared = new Map<K, KeyedRecord<T, K>>();
 
@@ -160,7 +161,7 @@ function createRegion<T, K extends Key>(
       }
 
       if (retained) {
-        record.setItem(descriptor.item);
+        record.setItem(() => descriptor.item);
         record.setIndex(descriptor.index);
       }
       nextRecords.push(record);
@@ -180,7 +181,9 @@ function createRegion<T, K extends Key>(
 
     orderedRecords = nextRecords;
     recordsByKey = nextRecordsByKey;
-  });
+  };
+
+  const stop = effect(() => batch(reconcile));
 
   onCleanup(() => {
     stop();
