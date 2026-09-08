@@ -1,11 +1,15 @@
 import { mount, state, type Accessor, type Setter } from "@rect/core";
 import {
   frameworkIds,
+  keyedScenarioIds,
   type BenchmarkConfig,
   type BenchmarkResult,
   type FrameworkId,
+  type KeyedBenchmarkConfig,
+  type KeyedBenchmarkResult,
+  type KeyedScenarioId,
 } from "./benchmark-contract.ts";
-import { runFrameworkBenchmark } from "./benchmark-client.ts";
+import { runFrameworkBenchmark, runRectKeyedBenchmark } from "./benchmark-client.ts";
 
 type RowModel = {
   id: FrameworkId;
@@ -26,12 +30,31 @@ type RowModel = {
   setHeap: Setter<string>;
 };
 
+type KeyedRowModel = {
+  id: KeyedScenarioId;
+  label: string;
+  status: Accessor<string>;
+  setStatus: Setter<string>;
+  latency: Accessor<string>;
+  setLatency: Setter<string>;
+  mutations: Accessor<string>;
+  setMutations: Setter<string>;
+};
+
 const labels: Record<FrameworkId, string> = {
   rect: "Rect",
   vanilla: "Vanilla DOM",
   react: "React + Compiler",
   preact: "Preact",
   solid: "Solid",
+};
+
+const keyedLabels: Record<KeyedScenarioId, string> = {
+  append: "Append",
+  prepend: "Prepend",
+  reorder: "Half rotation",
+  "sparse-removal": "Sparse removal",
+  "adversarial-movement": "Reverse order",
 };
 
 function makeRow(id: FrameworkId): RowModel {
@@ -62,8 +85,26 @@ function makeRow(id: FrameworkId): RowModel {
   };
 }
 
+function makeKeyedRow(id: KeyedScenarioId): KeyedRowModel {
+  const [status, setStatus] = state("Ready");
+  const [latency, setLatency] = state("—");
+  const [mutations, setMutations] = state("—");
+  return {
+    id,
+    label: keyedLabels[id],
+    status,
+    setStatus,
+    latency,
+    setLatency,
+    mutations,
+    setMutations,
+  };
+}
+
 const rows = frameworkIds.map(makeRow);
 const rowById = new Map(rows.map((row) => [row.id, row]));
+const keyedRows = keyedScenarioIds.map(makeKeyedRow);
+const keyedRowById = new Map(keyedRows.map((row) => [row.id, row]));
 
 function formatMs(value: number): string {
   if (value < 0.01) return `${(value * 1000).toFixed(1)} µs`;
@@ -100,6 +141,21 @@ function applyResult(result: BenchmarkResult): void {
   row.setHeap(formatHeap(result.heapDeltaBytes));
 }
 
+function applyKeyedResult(result: KeyedBenchmarkResult): void {
+  for (const scenario of result.scenarios) {
+    const row = keyedRowById.get(scenario.scenario);
+    if (!row) continue;
+
+    row.setStatus(scenario.verified ? "Verified" : "Failed verification");
+    row.setLatency(
+      `${formatMs(scenario.latencyMs.p50)} / ${formatMs(scenario.latencyMs.p95)} / ${formatMs(scenario.latencyMs.p99)}`,
+    );
+    row.setMutations(
+      `${scenario.mutationRecords.p50.toFixed(0)} / ${scenario.mutationRecords.p95.toFixed(0)} / ${scenario.mutationRecords.p99.toFixed(0)}`,
+    );
+  }
+}
+
 function clampInteger(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, Math.round(value)));
 }
@@ -121,14 +177,34 @@ function resultRow(row: RowModel): Node {
   );
 }
 
+function keyedResultRow(row: KeyedRowModel): Node {
+  return (
+    <tr>
+      <th scope="row">
+        <span className="framework-name">{row.label}</span>
+        <span className="status">{row.status}</span>
+      </th>
+      <td>{row.latency}</td>
+      <td>{row.mutations}</td>
+    </tr>
+  );
+}
+
 function App(): Node {
   const [count, setCount] = state(0);
   const [progress, setProgress] = state("Ready to benchmark.");
   const [rawOutput, setRawOutput] = state("Run the suite to capture raw evidence.");
+  const [keyedProgress, setKeyedProgress] = state("Ready to benchmark keyed movement.");
+  const [keyedRawOutput, setKeyedRawOutput] = state(
+    "Run the keyed suite to capture raw movement evidence.",
+  );
 
   let nodesInput: HTMLInputElement | undefined;
   let updatesInput: HTMLInputElement | undefined;
   let runButton: HTMLButtonElement | undefined;
+  let keyedItemsInput: HTMLInputElement | undefined;
+  let keyedSamplesInput: HTMLInputElement | undefined;
+  let keyedRunButton: HTMLButtonElement | undefined;
 
   const runSuite = async (): Promise<void> => {
     const nodes = clampInteger(Number(nodesInput?.value ?? 1000), 10, 10_000);
@@ -191,6 +267,46 @@ function App(): Node {
       setRawOutput(JSON.stringify(results, null, 2));
     } finally {
       if (runButton) runButton.disabled = false;
+    }
+  };
+
+  const runKeyedSuite = async (): Promise<void> => {
+    const items = clampInteger(Number(keyedItemsInput?.value ?? 1000), 10, 5000);
+    const samples = clampInteger(Number(keyedSamplesInput?.value ?? 30), 5, 100);
+    const config: KeyedBenchmarkConfig = {
+      items,
+      samples,
+      warmupSamples: Math.min(5, samples),
+    };
+
+    if (keyedItemsInput) keyedItemsInput.value = String(items);
+    if (keyedSamplesInput) keyedSamplesInput.value = String(samples);
+    if (keyedRunButton) keyedRunButton.disabled = true;
+
+    for (const row of keyedRows) {
+      row.setStatus("Queued");
+      row.setLatency("—");
+      row.setMutations("—");
+    }
+
+    try {
+      for (const row of keyedRows) row.setStatus("Running");
+      setKeyedProgress("Running Rect keyed movement scenarios…");
+      const result = await runRectKeyedBenchmark(config);
+      applyKeyedResult(result);
+      setKeyedProgress(
+        result.verified
+          ? "Finished with all keyed correctness checks verified."
+          : "Finished with keyed correctness failures.",
+      );
+      setKeyedRawOutput(JSON.stringify(result, null, 2));
+    } catch (error) {
+      for (const row of keyedRows) row.setStatus("Error");
+      const message = error instanceof Error ? error.message : String(error);
+      setKeyedProgress(`Keyed fixture failed: ${message}`);
+      setKeyedRawOutput(JSON.stringify({ verified: false, message }, null, 2));
+    } finally {
+      if (keyedRunButton) keyedRunButton.disabled = false;
     }
   };
 
@@ -288,6 +404,77 @@ function App(): Node {
         </p>
       </section>
 
+      <section className="shell benchmark-panel" aria-labelledby="keyed-benchmark-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Keyed browser evidence</p>
+            <h2 id="keyed-benchmark-title">Five movement classes, Rect only</h2>
+          </div>
+          <p className="section-note">
+            Each sample starts from one canonical list. Timings are accepted only after key order,
+            reactive item/index text, and retained DOM identity are verified.
+          </p>
+        </div>
+
+        <div className="controls">
+          <label>
+            Keyed items
+            <input
+              ref={(element: unknown) => {
+                if (element instanceof HTMLInputElement) keyedItemsInput = element;
+              }}
+              type="number"
+              min="10"
+              max="5000"
+              value="1000"
+            />
+          </label>
+          <label>
+            Samples per scenario
+            <input
+              ref={(element: unknown) => {
+                if (element instanceof HTMLInputElement) keyedSamplesInput = element;
+              }}
+              type="number"
+              min="5"
+              max="100"
+              value="30"
+            />
+          </label>
+          <button
+            ref={(element: unknown) => {
+              if (element instanceof HTMLButtonElement) keyedRunButton = element;
+            }}
+            className="primary"
+            type="button"
+            onClick={runKeyedSuite}
+          >
+            Run keyed workload
+          </button>
+          <span className="progress" role="status">
+            {keyedProgress}
+          </span>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Movement</th>
+                <th>Latency p50 / p95 / p99</th>
+                <th>MutationObserver records p50 / p95 / p99</th>
+              </tr>
+            </thead>
+            <tbody>{keyedRows.map(keyedResultRow)}</tbody>
+          </table>
+        </div>
+        <p className="fine-print">
+          Append, prepend, half-list rotation, sparse removal, and full reversal exercise distinct
+          keyed movement shapes. MutationObserver record counts are browser observations, not a
+          normalized work unit. This Rect-only evidence does not establish a framework ranking.
+        </p>
+      </section>
+
       <section className="shell grid-section">
         <article className="card">
           <p className="eyebrow">Rect execution</p>
@@ -307,11 +494,12 @@ function App(): Node {
           </p>
         </article>
         <article className="card">
-          <p className="eyebrow">Deliberately missing</p>
-          <h2>No keyed-list victory lap</h2>
+          <p className="eyebrow">Keyed boundary</p>
+          <h2>Evidence before claims</h2>
           <p>
-            Rect v0 does not yet own keyed collection semantics, so this lab does not benchmark
-            them. A workload enters the suite only after Rect has a tested behavior contract for it.
+            Rect now owns tested keyed collection semantics. Its movement workload stays separate
+            from the framework comparison until equivalent keyed fixtures and a frozen comparison
+            boundary exist.
           </p>
         </article>
       </section>
@@ -319,11 +507,21 @@ function App(): Node {
       <section className="shell evidence-panel" aria-labelledby="evidence-title">
         <div className="section-heading compact">
           <div>
-            <p className="eyebrow">Raw run</p>
+            <p className="eyebrow">Raw fan-out run</p>
             <h2 id="evidence-title">Evidence, not a headline</h2>
           </div>
         </div>
         <pre>{rawOutput}</pre>
+      </section>
+
+      <section className="shell evidence-panel" aria-labelledby="keyed-evidence-title">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Raw keyed run</p>
+            <h2 id="keyed-evidence-title">Movement evidence, still not a headline</h2>
+          </div>
+        </div>
+        <pre>{keyedRawOutput}</pre>
       </section>
     </main>
   );
