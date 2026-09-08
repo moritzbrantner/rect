@@ -64,6 +64,36 @@ function assertFixture(instance, expected) {
   }
 }
 
+function assertKeyedFixture(beforeEntries, afterEntries, expectedEntries) {
+  if (afterEntries.length !== expectedEntries.length) {
+    throw new Error(
+      `Keyed correctness check failed: expected ${expectedEntries.length} items, got ${afterEntries.length}.`,
+    );
+  }
+
+  const beforeByKey = new Map(beforeEntries.map((entry) => [entry.key, entry.node]));
+  for (let index = 0; index < expectedEntries.length; index += 1) {
+    const expected = expectedEntries[index];
+    const actual = afterEntries[index];
+    if (!expected || !actual) throw new Error("Keyed correctness check lost an expected row.");
+    if (actual.key !== expected.key) {
+      throw new Error(
+        `Keyed order check failed at ${index}: expected ${expected.key}, got ${actual.key}.`,
+      );
+    }
+    if (actual.text !== `${index}:${expected.label}`) {
+      throw new Error(
+        `Keyed reactive text check failed for ${expected.key}: expected ${index}:${expected.label}, got ${actual.text}.`,
+      );
+    }
+
+    const previousNode = beforeByKey.get(actual.key);
+    if (previousNode && previousNode !== actual.node) {
+      throw new Error(`Keyed DOM identity check failed for retained key ${actual.key}.`);
+    }
+  }
+}
+
 async function run(config) {
   const mountSamples = [];
   let firstMountMs = 0;
@@ -127,14 +157,92 @@ async function run(config) {
   return result;
 }
 
+function runKeyedOperation(instance, scenario, sample) {
+  instance.resetKeyed();
+  const beforeEntries = instance.readKeyedEntries();
+  const observer = new MutationObserver(() => undefined);
+  observer.observe(target, { subtree: true, characterData: true, childList: true });
+
+  const start = performance.now();
+  const expectedEntries = instance.applyKeyed(scenario, sample);
+  const latencyMs = performance.now() - start;
+  const mutationRecords = observer.takeRecords().length;
+  observer.disconnect();
+
+  const afterEntries = instance.readKeyedEntries();
+  assertKeyedFixture(beforeEntries, afterEntries, expectedEntries);
+  return { latencyMs, mutationRecords };
+}
+
+async function runKeyed(config) {
+  if (framework !== "rect" || typeof adapter.mountKeyed !== "function") {
+    throw new Error("Keyed benchmark is available only for the Rect reference fixture.");
+  }
+  if (!Array.isArray(adapter.keyedScenarios) || adapter.keyedScenarios.length === 0) {
+    throw new Error("Rect keyed benchmark has no declared scenarios.");
+  }
+
+  target.replaceChildren();
+  const instance = adapter.mountKeyed(target, config.items);
+  try {
+    const scenarios = [];
+    for (const scenario of adapter.keyedScenarios) {
+      for (let sample = 0; sample < config.warmupSamples; sample += 1) {
+        runKeyedOperation(instance, scenario, sample);
+      }
+
+      const latencySamples = [];
+      const mutationSamples = [];
+      for (let sample = 0; sample < config.samples; sample += 1) {
+        const measured = runKeyedOperation(instance, scenario, config.warmupSamples + sample);
+        latencySamples.push(measured.latencyMs);
+        mutationSamples.push(measured.mutationRecords);
+      }
+
+      scenarios.push({
+        scenario,
+        latencyMs: distribution(latencySamples),
+        mutationRecords: distribution(mutationSamples),
+        verified: true,
+      });
+    }
+
+    return {
+      framework: "rect",
+      config,
+      scenarios,
+      verified: true,
+      notes: [
+        "Each measured operation starts from the same baseline ordering.",
+        "Correctness requires expected key order, reactive item/index text, and DOM identity for every retained key.",
+        "Mutation counts are MutationObserver records, not a normalized browser work unit.",
+        "This is Rect-only browser evidence and does not support a cross-framework performance ranking.",
+      ],
+    };
+  } finally {
+    instance.dispose();
+    target.replaceChildren();
+  }
+}
+
 window.addEventListener("message", async (event) => {
   if (event.origin !== window.location.origin || event.source !== window.parent) return;
   const message = event.data;
-  if (!message || message.type !== "rect:benchmark-run") return;
+  if (!message || typeof message !== "object") return;
+  if (message.type !== "rect:benchmark-run" && message.type !== "rect:keyed-benchmark-run") return;
+
   try {
-    const result = await run(message.config);
+    const result =
+      message.type === "rect:keyed-benchmark-run" ? await runKeyed(message.config) : await run(message.config);
     window.parent.postMessage(
-      { type: "rect:benchmark-result", runId: message.runId, result },
+      {
+        type:
+          message.type === "rect:keyed-benchmark-run"
+            ? "rect:keyed-benchmark-result"
+            : "rect:benchmark-result",
+        runId: message.runId,
+        result,
+      },
       window.location.origin,
     );
   } catch (error) {
