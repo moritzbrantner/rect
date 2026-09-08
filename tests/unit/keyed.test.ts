@@ -216,8 +216,11 @@ test("keyed collections reject duplicate keys before mutating the current region
   const target = new FakeElement();
 
   function App() {
-    return keyed(items, (item) => item.id, (item) =>
-      jsx("span", { className: item().id, children: derived(() => item().label) }),
+    return keyed(
+      items,
+      (item) => item.id,
+      (item) =>
+        jsx("span", { className: item().id, children: derived(() => item().label) }),
     );
   }
 
