@@ -64,7 +64,7 @@ function moveIntoCarrier<T, K extends Key>(record: KeyedRecord<T, K>): void {
   let node: Node | null = record.start;
   let foundEnd = false;
   while (node) {
-    const next = node.nextSibling;
+    const next: Node | null = node.nextSibling;
     record.carrier.appendChild(node);
     if (node === record.end) {
       foundEnd = true;
