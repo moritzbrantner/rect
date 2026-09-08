@@ -279,3 +279,87 @@ test("key selection and item construction do not widen the collection dependency
 
   dispose();
 });
+
+test("keyed collections defer source updates triggered during item construction", () => {
+  const [items, setItems] = state<readonly Item[]>([{ id: "a", label: "A" }]);
+  const target = new FakeElement();
+  const mounts: string[] = [];
+  const cleanups: string[] = [];
+  let expanded = false;
+
+  function App() {
+    return keyed(
+      items,
+      (item) => item.id,
+      (item) => {
+        const id = item().id;
+        mounts.push(id);
+        onCleanup(() => cleanups.push(id));
+        if (!expanded && id === "a") {
+          expanded = true;
+          setItems([
+            { id: "a", label: "A2" },
+            { id: "b", label: "B" },
+          ]);
+        }
+        return jsx("span", { className: id, children: derived(() => item().label) });
+      },
+    );
+  }
+
+  const dispose = mount(jsx(App, null), target as unknown as Element);
+
+  expect(elementChildren(target).map((element) => element.className)).toEqual(["a", "b"]);
+  expect(elementChildren(target).map(textOf)).toEqual(["A2", "B"]);
+  expect(mounts).toEqual(["a", "b"]);
+  expect(cleanups).toEqual([]);
+
+  dispose();
+  expect(cleanups.toSorted()).toEqual(["a", "b"]);
+});
+
+test("keyed collections retain callable items without invoking them as state updaters", () => {
+  type CallableItem = (() => string) & {
+    id: string;
+    label: string;
+  };
+
+  const calls: string[] = [];
+  const createItem = (label: string): CallableItem =>
+    Object.assign(
+      () => {
+        calls.push(label);
+        return label;
+      },
+      { id: "a", label },
+    );
+  const first = createItem("A");
+  const replacement = createItem("A2");
+  const [items, setItems] = state<readonly CallableItem[]>([first]);
+  const target = new FakeElement();
+
+  function App() {
+    return keyed(
+      items,
+      (item) => item.id,
+      (item) =>
+        jsx("span", {
+          className: item().id,
+          children: derived(() => item().label),
+        }),
+    );
+  }
+
+  const dispose = mount(jsx(App, null), target as unknown as Element);
+  const initial = elementChildren(target)[0]!;
+  expect(textOf(initial)).toBe("A");
+
+  setItems([replacement]);
+
+  const retained = elementChildren(target)[0]!;
+  expect(retained).toBe(initial);
+  expect(textOf(retained)).toBe("A2");
+  expect(calls).toEqual([]);
+
+  dispose();
+});
