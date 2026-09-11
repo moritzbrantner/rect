@@ -157,22 +157,41 @@ async function run(config) {
   return result;
 }
 
-function runKeyedOperation(instance, scenario, sample) {
+function prepareKeyedOperation(instance, scenario, sample) {
   instance.resetKeyed();
-  const beforeEntries = instance.readKeyedEntries();
-  const expectedEntries = instance.prepareKeyed(scenario, sample);
-  const observer = new MutationObserver(() => undefined);
-  observer.observe(target, { subtree: true, characterData: true, childList: true });
+  return {
+    beforeEntries: instance.readKeyedEntries(),
+    expectedEntries: instance.prepareKeyed(scenario, sample),
+  };
+}
 
+function verifyKeyedOperation(instance, beforeEntries, expectedEntries) {
+  const afterEntries = instance.readKeyedEntries();
+  assertKeyedFixture(beforeEntries, afterEntries, expectedEntries);
+}
+
+function runKeyedLatencyOperation(instance, scenario, sample) {
+  const { beforeEntries, expectedEntries } = prepareKeyedOperation(instance, scenario, sample);
   const start = performance.now();
   instance.applyKeyed(expectedEntries);
   const latencyMs = performance.now() - start;
-  const mutationRecords = observer.takeRecords().length;
-  observer.disconnect();
+  verifyKeyedOperation(instance, beforeEntries, expectedEntries);
+  return latencyMs;
+}
 
-  const afterEntries = instance.readKeyedEntries();
-  assertKeyedFixture(beforeEntries, afterEntries, expectedEntries);
-  return { latencyMs, mutationRecords };
+function runKeyedMutationOperation(instance, scenario, sample) {
+  const { beforeEntries, expectedEntries } = prepareKeyedOperation(instance, scenario, sample);
+  const observer = new MutationObserver(() => undefined);
+  observer.observe(target, { subtree: true, characterData: true, childList: true });
+
+  try {
+    instance.applyKeyed(expectedEntries);
+    const mutationRecords = observer.takeRecords().length;
+    verifyKeyedOperation(instance, beforeEntries, expectedEntries);
+    return mutationRecords;
+  } finally {
+    observer.disconnect();
+  }
 }
 
 async function runKeyed(config) {
@@ -195,15 +214,25 @@ async function runKeyed(config) {
     const scenarios = [];
     for (const scenario of keyedAdapter.keyedScenarios) {
       for (let sample = 0; sample < config.warmupSamples; sample += 1) {
-        runKeyedOperation(instance, scenario, sample);
+        runKeyedLatencyOperation(instance, scenario, sample);
       }
 
       const latencySamples = [];
+      for (let sample = 0; sample < config.samples; sample += 1) {
+        latencySamples.push(
+          runKeyedLatencyOperation(instance, scenario, config.warmupSamples + sample),
+        );
+      }
+
+      for (let sample = 0; sample < config.warmupSamples; sample += 1) {
+        runKeyedMutationOperation(instance, scenario, sample);
+      }
+
       const mutationSamples = [];
       for (let sample = 0; sample < config.samples; sample += 1) {
-        const measured = runKeyedOperation(instance, scenario, config.warmupSamples + sample);
-        latencySamples.push(measured.latencyMs);
-        mutationSamples.push(measured.mutationRecords);
+        mutationSamples.push(
+          runKeyedMutationOperation(instance, scenario, config.warmupSamples + sample),
+        );
       }
 
       scenarios.push({
@@ -222,6 +251,7 @@ async function runKeyed(config) {
       notes: [
         "Each measured operation starts from the same baseline ordering.",
         "Correctness requires expected key order, reactive item/index text, and DOM identity for every retained key.",
+        "Latency and mutation records are collected in separate correctness-gated passes so observer instrumentation is excluded from latency samples.",
         "Mutation counts are MutationObserver records, not a normalized browser work unit.",
         "This is Rect-only browser evidence and does not support a cross-framework performance ranking.",
       ],
