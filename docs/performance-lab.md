@@ -62,6 +62,23 @@ The Pages build emits `fixtures/manifest.json` with:
 
 `bun run verify:comparison` fails closed if the runner regains an import map/CDN runtime, a comparison dependency leaks into `@rect/core`, an emitted asset retains a bare comparison-runtime import, or manifest byte evidence disagrees with the built artifact.
 
+## Published protocol browser acceptance
+
+The Pages gate also owns a bounded real-browser acceptance layer. Playwright is pinned in the comparison workspace and drives its matching Chromium build against the already-built `dist/pages` artifacts rather than a source-development server.
+
+`bun run verify:comparison:browser` verifies all of the following without adding performance thresholds:
+
+- the browser-visible manifest is exactly the manifest emitted by the build;
+- every published fixture asset is served with the byte count recorded in that manifest;
+- the existing fan-out protocol runs for Rect, vanilla DOM, React + React Compiler, Preact, and Solid with a small fixed smoke configuration;
+- every fan-out result passes the fixture's first/last-node correctness checks and reports bundle bytes matching the corresponding manifest asset;
+- React, Preact, and Solid report the exact versions pinned by the comparison workspace;
+- the Rect-only keyed protocol runs all five movement classes and preserves its existing correctness gate;
+- the expected fixture assets are actually loaded through the published runner;
+- page errors, console errors, or unexpected external HTTP(S) runtime requests fail the acceptance run.
+
+The smoke configuration checks protocol semantics and evidence shape only. Measured latency values must be finite observations, but they are not compared with baselines, budgets, or framework rankings.
+
 ## Measurements
 
 The fan-out comparison keeps dimensions independent:
@@ -86,7 +103,7 @@ A missing browser metric is reported as unavailable rather than replaced by an e
 
 The browser page is exploratory performance evidence. Hardware, browser version, background work, thermal state, JIT state, and extension activity can all move measurements. Do not turn a Pages run into a universal "X times faster" claim.
 
-The normalized dependency/build boundary makes bundle bytes reproducible and removes CDN cache/network differences from framework-runtime loading. It does not by itself make latency measurements universal or prove that the framework fixtures are compiler-equivalent.
+The normalized dependency/build boundary makes bundle bytes reproducible and removes CDN cache/network differences from framework-runtime loading. Real-browser protocol acceptance proves that the published artifacts still execute the declared correctness/evidence contract; it does not make latency measurements universal or prove that the framework fixtures are compiler-equivalent.
 
 The keyed workload establishes browser evidence for Rect's own reconciliation behavior only. It does not support a Rect-versus-framework keyed-list claim until equivalent fixtures and correctness contracts exist.
 
@@ -97,7 +114,6 @@ The deterministic `benchmarks/` workload, runtime-profiler capture, and Moonligh
 Continue normalizing the comparison without touching Rect runtime semantics:
 
 1. compile Solid with its official compiler rather than the compiler-shaped fixture;
-2. add Playwright browser verification for the published benchmark protocol and emitted manifest;
-3. add equivalent batched/multi-value workloads before interpreting framework scheduler behavior;
-4. only then promote keyed movement into a cross-framework workload with equivalent correctness contracts;
-5. add the Rect compiled fixture once the compiler-assisted path exists.
+2. add equivalent batched/multi-value workloads before interpreting framework scheduler behavior;
+3. only then promote keyed movement into a cross-framework workload with equivalent correctness contracts;
+4. add the Rect compiled fixture once the compiler-assisted path exists.
