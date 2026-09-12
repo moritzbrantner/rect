@@ -1,0 +1,59 @@
+name: Finalize published comparison protocol
+
+on:
+  push:
+    branches:
+      - test/published-comparison-protocol
+    paths:
+      - .github/workflows/finalize-published-protocol.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out protocol branch
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up pinned Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+
+      - name: Refresh frozen dependency graph
+        run: bun install
+
+      - name: Format repository changes
+        run: bun run format
+
+      - name: Verify source layers
+        run: |
+          bun run format:check
+          bun run lint
+          bun run typecheck
+          bun run test:unit
+          bun run build:pages
+          bun run verify:comparison
+
+      - name: Install pinned comparison browser
+        run: bunx playwright install --with-deps chromium
+
+      - name: Verify published comparison protocol
+        run: bun run verify:comparison:browser
+
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/finalize-published-protocol.yml
+
+      - name: Commit generated lock and formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --exit-code && exit 0
+          git commit -m "build: freeze published comparison protocol"
+          git push origin HEAD:${{ github.ref_name }}
