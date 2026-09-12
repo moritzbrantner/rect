@@ -218,7 +218,7 @@ jobs:
           ICBzZXRJdGVtcyhbeyBpZDogImEiIH0sIHsgaWQ6ICJiIiB9XSk7CgogIGV4cGVjdChzZWVuKS50
           b0VxdWFsKFsiYTpkYXJrIiwgImI6ZGFyayJdKTsKICBkaXNwb3NlKCk7Cn0pCg==
           B64
-          base64 --decode /tmp/patch.b64 > /tmp/apply.py
+          base64 --decode --ignore-garbage /tmp/patch.b64 > /tmp/apply.py
           python /tmp/apply.py
 
       - name: Set up pinned Bun
