@@ -130,11 +130,11 @@ It reports dimensions separately instead of producing a synthetic winner score:
 - first and warm mount latency;
 - update p50/p95/p99;
 - observed DOM mutations per update;
-- served application/runtime JavaScript bytes when measurable;
+- self-contained fixture JavaScript bytes;
 - browser heap delta when exposed by the runtime;
 - correctness verification for the first and last reactive node.
 
-React fixture source is processed by Bun 1.4's built-in React Compiler. Framework runtimes are exact-version external browser imports in this first horizon so Rect's frozen core lockfile remains unchanged. See [`docs/performance-lab.md`](docs/performance-lab.md) for the evidence boundary and the next normalization step.
+React fixture source is processed by Bun 1.4's built-in React Compiler. Comparison-only React, React DOM, Preact, and Solid packages are pinned to exact versions in the private `benchmarks/comparison` workspace and frozen by the repository `bun.lock`; they remain outside `@rect/core` dependencies. Pages bundles each fixture locally and self-contained, without a browser import map or CDN runtime resolution, and emits a manifest that records the source revision, build policy, dependency versions, assets, and bundle bytes. See [`docs/performance-lab.md`](docs/performance-lab.md) for the evidence boundary and the remaining normalization work.
 
 ```sh
 bun run dev:pages
