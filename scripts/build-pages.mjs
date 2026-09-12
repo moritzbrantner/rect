@@ -99,7 +99,7 @@ const fixtures = [
   },
   {
     id: "react",
-    entrypoint: "examples/performance-lab/fixtures/react.jsx",
+    entrypoint: "benchmarks/comparison/fixtures/react.jsx",
     dependencies: {
       react: comparisonDependencyVersions.react,
       "react-dom": comparisonDependencyVersions["react-dom"],
@@ -116,12 +116,12 @@ const fixtures = [
   },
   {
     id: "preact",
-    entrypoint: "examples/performance-lab/fixtures/preact.js",
+    entrypoint: "benchmarks/comparison/fixtures/preact.js",
     dependencies: { preact: comparisonDependencyVersions.preact },
   },
   {
     id: "solid",
-    entrypoint: "examples/performance-lab/fixtures/solid.js",
+    entrypoint: "benchmarks/comparison/fixtures/solid.js",
     dependencies: { "solid-js": comparisonDependencyVersions["solid-js"] },
   },
 ];
