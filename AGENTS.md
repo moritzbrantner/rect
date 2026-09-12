@@ -22,6 +22,8 @@ Rect is an experimental modern UI framework. Optimize for a small understandable
 - A reactive accessor used directly as a JSX child represents dynamic text. Repeated uses of the same accessor share the fan-out tracking work while retaining direct text-node writes.
 - `createContext()` / `provide()` / `consume()` resolve values through the owner tree. `provide()` uses a callback because JSX children are currently eager.
 - `show()` owns a condition-driven DOM region between stable anchors. Branch callbacks are lazy, branch construction is untracked by the selector, and each active branch has its own owner lifetime.
+- `keyed()` owns stable item ranges and region-managed item owners. Retained keys keep DOM and owner identity; removed ranges leave the live DOM before their item owner cleanup runs.
+- Empty and multi-node components use one trailing internal lifetime anchor so nested region teardown precedes containing-component cleanup; single-node components remain marker-free.
 - There are no component rerenders, dependency arrays, manual memoization hooks, or a virtual DOM.
 - The compiler is intentionally deferred until the reference runtime semantics have tests and evidence.
 
@@ -72,4 +74,4 @@ A compiler optimization must preserve a small non-compiler reference behavior so
 
 ## Next decision horizon
 
-The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX, keyed collections, and progressively more precise region ownership. Do not turn `show()` into a generic reconciler and do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.
+The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX and the normalized comparison harness. Region ownership is now explicit for conditional branches and keyed item ranges; do not grow another lifetime abstraction unless a later control-flow primitive exposes a concrete gap. Do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.
