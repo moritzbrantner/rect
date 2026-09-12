@@ -95,6 +95,14 @@ export function createOwner(parent: ReactiveOwner | undefined = activeOwner): Re
   return owner;
 }
 
+export function createRegionOwner(
+  parent: ReactiveOwner | undefined = activeOwner,
+): ReactiveOwner {
+  const owner = createOwner(parent);
+  parent?.children.delete(owner);
+  return owner;
+}
+
 export function getOwner(): ReactiveOwner | undefined {
   return activeOwner;
 }
