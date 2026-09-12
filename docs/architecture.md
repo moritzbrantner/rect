@@ -45,7 +45,7 @@ Every function component executes once inside a reactive owner scope. Owners for
 
 The shared dynamic-text fan-out binding is deliberately node-owned rather than component-owned because one accessor may be rendered by nodes belonging to different component owners. Its effect lives until its last bound text node is disposed.
 
-A component that produces a `DocumentFragment` carries its owner disposer with that fragment. When the fragment is inserted, the disposer is transferred to the first concrete child, or to the receiving parent for an empty result. This avoids adding marker DOM solely for ordinary component lifetime bookkeeping.
+A single-node component keeps the allocation-light path: its owner disposer is attached directly to that node. Empty and multi-node components append one internal trailing lifetime comment. The marker lets nested region and node disposers run before the containing component owner is released, instead of coupling that owner to whichever concrete child happened to come first. It carries no rendering semantics and is not part of the public API.
 
 ## Conditional regions
 
@@ -57,16 +57,21 @@ Each selected branch gets a dedicated child owner whose parent is the owner that
 
 A branch switch is deliberately narrow and non-overlapping:
 
-1. dispose every node and owner belonging to the previous branch;
-2. construct the selected branch lazily under a fresh branch owner;
-3. insert the new branch immediately before the stable end anchor;
-4. leave surrounding DOM and component execution untouched.
+1. detach the previous branch as one fragment from the live DOM;
+2. dispose node-owned lifetimes in that detached fragment, then dispose the branch owner;
+3. construct the selected branch lazily under a fresh branch owner;
+4. insert the new branch immediately before the stable end anchor;
+5. leave surrounding DOM and component execution untouched.
 
 Disposal before construction means effects owned by the old branch cannot react to state writes performed while the replacement branch is being created. If replacement construction throws, the region is left empty and can retry on a later condition change rather than keeping two branch lifetimes alive at once.
 
 If the containing component is unmounted, the start-anchor disposer stops the selector and disposes the active branch. Shared dynamic-text bindings remain node-owned, so removing the last text node in an inactive branch tears down that fan-out binding without coupling it to the branch owner.
 
-Keyed collections should reuse the same owner-tree model but define their own item/key algorithm rather than generalizing `show()` into a hidden reconciler.
+## Keyed item regions
+
+`keyed()` uses the same `ReactiveOwner` semantics as components and conditional branches, but each retained key has one explicit region-managed owner. The owner keeps its parent link for context lookup while the keyed record, not an arbitrary first rendered child, decides when that owner ends.
+
+Removal is range-based: the stable item anchors and everything between them move into the record carrier, node-owned lifetimes are disposed and the carrier is cleared, and only then is the item owner disposed. Retained keys move the existing range without recreating that owner. This keeps cleanup aligned with the independently removable DOM range without introducing another effect/cleanup system or a generic reconciler.
 
 ## Context
 
