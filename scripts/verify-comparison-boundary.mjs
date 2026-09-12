@@ -28,6 +28,9 @@ if (runner.includes("esm.sh") || runner.includes('type="importmap"')) {
 if (manifest.schemaVersion !== comparisonBuildContract.schemaVersion) {
   fail("manifest schema version does not match the declared contract");
 }
+if (typeof manifest.sourceRevision !== "string" || !/^[0-9a-f]{40}$/.test(manifest.sourceRevision)) {
+  fail("manifest does not contain a full source commit revision");
+}
 if (manifest.toolchain?.bun !== comparisonBuildContract.bunVersion) {
   fail("manifest does not record the pinned Bun version");
 }
