@@ -6,6 +6,7 @@ on:
       - feat/normalized-comparison-boundary
     paths:
       - .github/workflows/finalize-comparison-boundary.yml
+      - tsconfig.json
 
 permissions:
   contents: write
