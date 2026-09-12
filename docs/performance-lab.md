@@ -46,7 +46,21 @@ The fixture records p50/p95/p99 operation latency and MutationObserver record co
 - **Preact 10.29.8** uses the real renderer with its debounce scheduler made synchronous for the fan-out measurement boundary.
 - **Solid 1.9.15** uses Solid-owned signals/render lifetime and direct DOM effects in the same fine-grained shape its compiler targets. It is intentionally described as compiler-shaped rather than claiming an official Solid compiler pass.
 
-Framework runtime imports are exact-version browser ESM imports in Horizon 1. This avoids adding comparison-only packages to Rect's frozen runtime/tooling lockfile.
+## Frozen comparison boundary
+
+Comparison-only runtimes live in the private `benchmarks/comparison` workspace. React, React DOM, Preact, and Solid are pinned to exact versions there and resolved through the repository's root `bun.lock`; they do not become dependencies of `@rect/core`.
+
+Every fan-out fixture is built locally with the same Bun 1.4 browser target, ESM output, minification setting, and `packages: "bundle"` policy. The fixture runner has no browser import map and no CDN package resolution. React's fixture still uses Bun's built-in React Compiler, while the current Solid fixture remains explicitly compiler-shaped rather than an official Solid compiler output.
+
+The Pages build emits `fixtures/manifest.json` with:
+
+- the source revision represented by the build;
+- the pinned Bun/build policy;
+- the comparison workspace and lockfile boundary;
+- exact comparison package versions;
+- each emitted fixture asset and its byte size.
+
+`bun run verify:comparison` fails closed if the runner regains an import map/CDN runtime, a comparison dependency leaks into `@rect/core`, an emitted asset retains a bare comparison-runtime import, or manifest byte evidence disagrees with the built artifact.
 
 ## Measurements
 
@@ -56,8 +70,8 @@ The fan-out comparison keeps dimensions independent:
 - warm mount p50/p95/p99;
 - update p50/p95/p99;
 - mutation-observer records per update;
-- fixture application bundle bytes;
-- cross-origin runtime transfer bytes when Resource Timing exposes them;
+- self-contained fixture application bundle bytes, including the framework runtime for framework fixtures;
+- cross-origin runtime transfer bytes when Resource Timing exposes them; after the normalized local boundary this should normally be unavailable because comparison runtimes are bundled locally;
 - JavaScript heap delta when the browser exposes `performance.memory`.
 
 The keyed Rect-only workload separately reports:
@@ -70,18 +84,20 @@ A missing browser metric is reported as unavailable rather than replaced by an e
 
 ## Interpretation boundary
 
-The browser page is exploratory performance evidence. Network cache state, hardware, browser version, background work, thermal state, JIT state, and extension activity can all move measurements. Do not turn a Pages run into a universal "X times faster" claim.
+The browser page is exploratory performance evidence. Hardware, browser version, background work, thermal state, JIT state, and extension activity can all move measurements. Do not turn a Pages run into a universal "X times faster" claim.
 
-The keyed workload establishes browser evidence for Rect's own reconciliation behavior only. It does not support a Rect-versus-framework keyed-list claim until equivalent fixtures and a frozen comparison boundary exist.
+The normalized dependency/build boundary makes bundle bytes reproducible and removes CDN cache/network differences from framework-runtime loading. It does not by itself make latency measurements universal or prove that the framework fixtures are compiler-equivalent.
+
+The keyed workload establishes browser evidence for Rect's own reconciliation behavior only. It does not support a Rect-versus-framework keyed-list claim until equivalent fixtures and correctness contracts exist.
 
 The deterministic `benchmarks/` workload, runtime-profiler capture, and Moonlight baseline/candidate evaluation remain the source-development evidence path.
 
 ## Next horizon
 
-Normalize the comparison harness without touching Rect runtime semantics:
+Continue normalizing the comparison without touching Rect runtime semantics:
 
-1. add a dedicated comparison workspace with its own frozen dependency boundary;
-2. compile Solid with its official compiler rather than the compiler-shaped fixture;
-3. record local production bundle artifacts for every framework with the same bundler/minification policy;
-4. add Playwright browser verification for the published benchmark protocol;
-5. only then promote keyed movement into a cross-framework workload with equivalent correctness contracts.
+1. compile Solid with its official compiler rather than the compiler-shaped fixture;
+2. add Playwright browser verification for the published benchmark protocol and emitted manifest;
+3. add equivalent batched/multi-value workloads before interpreting framework scheduler behavior;
+4. only then promote keyed movement into a cross-framework workload with equivalent correctness contracts;
+5. add the Rect compiled fixture once the compiler-assisted path exists.
