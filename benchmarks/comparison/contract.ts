@@ -22,3 +22,19 @@ export const comparisonBuildContract = {
   minify: true,
   packages: "bundle",
 } as const;
+
+export const comparisonBrowserContract = {
+  playwrightVersion: "1.63.0",
+  browser: "chromium",
+  fanout: {
+    nodes: 10,
+    updates: 5,
+    mountSamples: 15,
+    warmupUpdates: 5,
+  },
+  keyed: {
+    items: 10,
+    samples: 5,
+    warmupSamples: 5,
+  },
+} as const;
