@@ -9,5 +9,8 @@
     "react-dom": "19.2.8",
     "solid-js": "1.9.15"
   },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  },
   "packageManager": "bun@1.4.0"
 }
