@@ -2,8 +2,10 @@
   "name": "@rect/core",
   "version": "0.0.0",
   "private": true,
+  "workspaces": [
+    "benchmarks/comparison"
+  ],
   "type": "module",
-  "workspaces": ["benchmarks/comparison"],
   "exports": {
     ".": "./src/index.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
