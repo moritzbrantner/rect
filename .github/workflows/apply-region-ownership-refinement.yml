@@ -1,0 +1,550 @@
+name: Apply region ownership refinement
+
+on:
+  push:
+    branches:
+      - feat/region-ownership-refinement
+    paths:
+      - .github/workflows/apply-region-ownership-refinement.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out refinement branch
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Apply ownership refinement
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one match in {path}, found {count}: {old[:80]!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "src/reactivity.ts",
+              "export function getOwner(): ReactiveOwner | undefined {\n",
+              "export function createRegionOwner(\n"
+              "  parent: ReactiveOwner | undefined = activeOwner,\n"
+              "): ReactiveOwner {\n"
+              "  const owner = createOwner(parent);\n"
+              "  parent?.children.delete(owner);\n"
+              "  return owner;\n"
+              "}\n\n"
+              "export function getOwner(): ReactiveOwner | undefined {\n",
+          )
+
+          replace_once(
+              "src/dom.ts",
+              '''function disposeConditionalBranch(
+  start: Comment,
+  end: Comment,
+  owner: ReactiveOwner | undefined,
+): void {
+  let firstError: unknown;
+  let hasError = false;
+  let node = start.nextSibling;
+
+  while (node && node !== end) {
+    const next = node.nextSibling;
+    try {
+      disposeTree(node);
+    } catch (error) {
+      if (!hasError) {
+        firstError = error;
+        hasError = true;
+      }
+    }
+    node.parentNode?.removeChild(node);
+    node = next;
+  }
+
+  if (owner) {
+    try {
+      disposeOwner(owner);
+    } catch (error) {
+      if (!hasError) {
+        firstError = error;
+        hasError = true;
+      }
+    }
+  }
+
+  if (hasError) throw firstError;
+}
+''',
+              '''function disposeConditionalBranch(
+  start: Comment,
+  end: Comment,
+  owner: ReactiveOwner | undefined,
+): void {
+  const detached = document.createDocumentFragment();
+  let node = start.nextSibling;
+  while (node && node !== end) {
+    const next = node.nextSibling;
+    detached.appendChild(node);
+    node = next;
+  }
+
+  let firstError: unknown;
+  let hasError = false;
+  try {
+    disposeDetachedTree(detached);
+  } catch (error) {
+    firstError = error;
+    hasError = true;
+  }
+  detached.replaceChildren();
+
+  if (owner) {
+    try {
+      disposeOwner(owner);
+    } catch (error) {
+      if (!hasError) {
+        firstError = error;
+        hasError = true;
+      }
+    }
+  }
+
+  if (hasError) throw firstError;
+}
+''',
+          )
+
+          replace_once(
+              "src/dom.ts",
+              '''    const fragment = document.createDocumentFragment();
+    appendChild(fragment, child);
+    const dispose = () => disposeOwner(owner);
+    if (fragment.childNodes.length === 1) {
+      const node = fragment.firstChild as Node;
+      moveDisposers(fragment, node);
+      registerDisposer(node, dispose);
+      return node;
+    }
+    registerDisposer(fragment, dispose);
+    return fragment;
+''',
+              '''    const fragment = document.createDocumentFragment();
+    try {
+      appendChild(fragment, child);
+    } catch (error) {
+      disposeDetachedTree(fragment);
+      disposeOwner(owner);
+      throw error;
+    }
+
+    const dispose = () => disposeOwner(owner);
+    if (fragment.childNodes.length === 1) {
+      const node = fragment.firstChild as Node;
+      moveDisposers(fragment, node);
+      registerDisposer(node, dispose);
+      return node;
+    }
+
+    const lifetimeAnchor = document.createComment("rect:component:end");
+    fragment.appendChild(lifetimeAnchor);
+    moveDisposers(fragment, lifetimeAnchor);
+    registerDisposer(lifetimeAnchor, dispose);
+    return fragment;
+''',
+          )
+
+          replace_once(
+              "src/keyed.ts",
+              '''  batch,
+  effect,
+  getOwner,
+  onCleanup,
+''',
+              '''  batch,
+  createRegionOwner,
+  disposeOwner,
+  effect,
+  getOwner,
+  onCleanup,
+''',
+          )
+
+          replace_once(
+              "src/keyed.ts",
+              '''  const [item, setItem] = state(descriptor.item);
+  const [index, setIndex] = state(descriptor.index);
+  const carrier = document.createDocumentFragment();
+  const start = document.createComment("rect:keyed:item");
+  const end = document.createComment("/rect:keyed:item");
+  const child = runWithOwner(owner, () => jsx(() => untrack(() => render(item, index)), null));
+  const dispose = mount([start, child, end], carrier as unknown as Element);
+
+  return {
+''',
+              '''  const [item, setItem] = state(descriptor.item);
+  const [index, setIndex] = state(descriptor.index);
+  const carrier = document.createDocumentFragment();
+  const start = document.createComment("rect:keyed:item");
+  const end = document.createComment("/rect:keyed:item");
+  const itemOwner = createRegionOwner(owner);
+
+  let child: Child;
+  try {
+    child = runWithOwner(itemOwner, () => untrack(() => render(item, index)));
+  } catch (error) {
+    disposeOwner(itemOwner);
+    throw error;
+  }
+
+  let disposeDom: () => void;
+  try {
+    disposeDom = mount([start, child, end], carrier as unknown as Element);
+  } catch (error) {
+    try {
+      mount(null, carrier as unknown as Element);
+    } catch {
+      // Preserve the original construction failure while making a best-effort DOM cleanup.
+    }
+    disposeOwner(itemOwner);
+    throw error;
+  }
+
+  const dispose = () => {
+    let firstError: unknown;
+    let hasError = false;
+    try {
+      disposeDom();
+    } catch (error) {
+      firstError = error;
+      hasError = true;
+    }
+    try {
+      disposeOwner(itemOwner);
+    } catch (error) {
+      if (!hasError) {
+        firstError = error;
+        hasError = true;
+      }
+    }
+    if (hasError) throw firstError;
+  };
+
+  return {
+''',
+          )
+
+          Path("tests/unit/region-ownership.test.ts").write_text(r'''import { afterAll, expect, test } from "bun:test";
+
+import { consume, createContext, onCleanup, provide, state } from "../../src/reactivity.ts";
+
+class FakeNode {
+  childNodes: FakeNode[] = [];
+  parentNode: FakeNode | null = null;
+
+  get firstChild(): FakeNode | null {
+    return this.childNodes[0] ?? null;
+  }
+
+  get nextSibling(): FakeNode | null {
+    if (!this.parentNode) return null;
+    const index = this.parentNode.childNodes.indexOf(this);
+    return index === -1 ? null : (this.parentNode.childNodes[index + 1] ?? null);
+  }
+
+  appendChild(child: FakeNode): FakeNode {
+    return this.insertBefore(child, null);
+  }
+
+  insertBefore(child: FakeNode, reference: FakeNode | null): FakeNode {
+    if (child instanceof FakeDocumentFragment) {
+      const nestedChildren = child.childNodes.slice();
+      for (const nested of nestedChildren) this.insertBefore(nested, reference);
+      child.childNodes = [];
+      return child;
+    }
+
+    if (child.parentNode) child.parentNode.removeChild(child);
+    const index = reference === null ? this.childNodes.length : this.childNodes.indexOf(reference);
+    if (index === -1) throw new Error("Reference node is not a child.");
+    child.parentNode = this;
+    this.childNodes.splice(index, 0, child);
+    return child;
+  }
+
+  removeChild(child: FakeNode): FakeNode {
+    const index = this.childNodes.indexOf(child);
+    if (index === -1) throw new Error("Node is not a child.");
+    this.childNodes.splice(index, 1);
+    child.parentNode = null;
+    return child;
+  }
+
+  replaceChildren(...children: FakeNode[]): void {
+    for (const child of this.childNodes) child.parentNode = null;
+    this.childNodes = [];
+    for (const child of children) this.appendChild(child);
+  }
+}
+
+class FakeDocumentFragment extends FakeNode {}
+class FakeComment extends FakeNode {}
+
+class FakeText extends FakeNode {
+  data: string;
+
+  constructor(data: string) {
+    super();
+    this.data = data;
+  }
+}
+
+class FakeElement extends FakeNode {
+  className = "";
+  style = { cssText: "" };
+  attributes = new Map<string, string>();
+
+  addEventListener(): void {}
+
+  setAttribute(key: string, value: string): void {
+    this.attributes.set(key, value);
+  }
+}
+
+const originalGlobals = {
+  DocumentFragment: globalThis.DocumentFragment,
+  HTMLElement: globalThis.HTMLElement,
+  Node: globalThis.Node,
+  document: globalThis.document,
+};
+
+Object.assign(globalThis, {
+  DocumentFragment: FakeDocumentFragment,
+  HTMLElement: FakeElement,
+  Node: FakeNode,
+  document: {
+    createComment: () => new FakeComment(),
+    createDocumentFragment: () => new FakeDocumentFragment(),
+    createElement: () => new FakeElement(),
+    createTextNode: (value: string) => new FakeText(value),
+  },
+});
+
+const { jsx, mount, show } = await import("../../src/dom.ts");
+const { keyed } = await import("../../src/keyed.ts");
+
+afterAll(() => {
+  Object.assign(globalThis, originalGlobals);
+});
+
+test("multi-node component owners clean up after nested show regions leave the live DOM", () => {
+  const [visible] = state(true);
+  const target = new FakeElement();
+  let branchNode: FakeElement | undefined;
+  let branchParentDuringCleanup: FakeNode | null | undefined;
+  let appParentDuringCleanup: FakeNode | null | undefined;
+
+  function App() {
+    onCleanup(() => {
+      appParentDuringCleanup = branchNode?.parentNode;
+    });
+    return [
+      jsx("span", { className: "prefix", children: "prefix" }),
+      show(visible, () => {
+        const node = jsx("span", { className: "branch", children: "branch" }) as FakeElement;
+        branchNode = node;
+        onCleanup(() => {
+          branchParentDuringCleanup = node.parentNode;
+        });
+        return node;
+      }),
+    ];
+  }
+
+  const dispose = mount(jsx(App, null), target as unknown as Element);
+  expect(branchNode?.parentNode).toBe(target);
+
+  dispose();
+
+  expect(branchParentDuringCleanup).toBeNull();
+  expect(appParentDuringCleanup).toBeNull();
+});
+
+test("keyed item owners clean up after their complete record leaves the live DOM", () => {
+  const [items, setItems] = state<readonly { id: string }[]>([{ id: "a" }]);
+  const target = new FakeElement();
+  let first: FakeElement | undefined;
+  let second: FakeElement | undefined;
+  let parentsDuringCleanup: readonly (FakeNode | null)[] | undefined;
+
+  function App() {
+    return keyed(
+      items,
+      (item) => item.id,
+      () => {
+        first = jsx("span", { className: "first", children: "first" }) as FakeElement;
+        second = jsx("span", { className: "second", children: "second" }) as FakeElement;
+        onCleanup(() => {
+          parentsDuringCleanup = [first?.parentNode ?? null, second?.parentNode ?? null];
+        });
+        return [first, second];
+      },
+    );
+  }
+
+  const dispose = mount(jsx(App, null), target as unknown as Element);
+  expect(first?.parentNode).toBe(target);
+  expect(second?.parentNode).toBe(target);
+
+  setItems([]);
+
+  expect(parentsDuringCleanup).toEqual([null, null]);
+  dispose();
+});
+
+test("keyed region owners preserve provider context for items created later", () => {
+  const theme = createContext<string>();
+  const [items, setItems] = state<readonly { id: string }[]>([{ id: "a" }]);
+  const target = new FakeElement();
+  const seen: string[] = [];
+
+  function App() {
+    return provide(theme, "dark", () =>
+      keyed(
+        items,
+        (item) => item.id,
+        (item) => {
+          seen.push(`${item().id}:${consume(theme)}`);
+          return jsx("span", { children: item().id });
+        },
+      ),
+    );
+  }
+
+  const dispose = mount(jsx(App, null), target as unknown as Element);
+  setItems([{ id: "a" }, { id: "b" }]);
+
+  expect(seen).toEqual(["a:dark", "b:dark"]);
+  dispose();
+});
+''')
+
+          replace_once(
+              "docs/architecture.md",
+              '''A component that produces a `DocumentFragment` carries its owner disposer with that fragment. When the fragment is inserted, the disposer is transferred to the first concrete child, or to the receiving parent for an empty result. This avoids adding marker DOM solely for ordinary component lifetime bookkeeping.
+''',
+              '''A single-node component keeps the allocation-light path: its owner disposer is attached directly to that node. Empty and multi-node components now append one internal trailing lifetime comment. The marker lets nested region and node disposers run before the containing component owner is released, instead of coupling that owner to whichever concrete child happened to come first. It carries no rendering semantics and is not part of the public API.
+''',
+          )
+
+          replace_once(
+              "docs/architecture.md",
+              '''A branch switch is deliberately narrow and non-overlapping:
+
+1. dispose every node and owner belonging to the previous branch;
+2. construct the selected branch lazily under a fresh branch owner;
+3. insert the new branch immediately before the stable end anchor;
+4. leave surrounding DOM and component execution untouched.
+''',
+              '''A branch switch is deliberately narrow and non-overlapping:
+
+1. detach the previous branch as one fragment from the live DOM;
+2. dispose node-owned lifetimes in that detached fragment, then dispose the branch owner;
+3. construct the selected branch lazily under a fresh branch owner;
+4. insert the new branch immediately before the stable end anchor;
+5. leave surrounding DOM and component execution untouched.
+''',
+          )
+
+          replace_once(
+              "docs/architecture.md",
+              '''Keyed collections should reuse the same owner-tree model but define their own item/key algorithm rather than generalizing `show()` into a hidden reconciler.
+''',
+              '''## Keyed item regions
+
+`keyed()` uses the same `ReactiveOwner` semantics as components and conditional branches, but each retained key now has one explicit region-managed owner. The owner keeps its parent link for context lookup while the keyed record, not an arbitrary first rendered child, decides when that owner ends.
+
+Removal is range-based: the stable item anchors and everything between them move into the record carrier, node-owned lifetimes are disposed and the carrier is cleared, and only then is the item owner disposed. Retained keys move the existing range without recreating that owner. This keeps cleanup aligned with the independently removable DOM range without introducing another effect/cleanup system or a generic reconciler.
+''',
+          )
+
+          replace_once(
+              "ROADMAP.md",
+              '''### 3.3 Region ownership refinement
+
+After conditional and keyed regions exist, tighten ownership for independently removable nested fragments where the two primitives expose a concrete need. Do not introduce a second lifetime model beside the owner tree.
+''',
+              '''### 3.3 Region ownership refinement
+
+Control-flow regions now tighten ownership only where conditional and keyed removal made the first-child lifetime shortcut ambiguous:
+
+- empty and multi-node components use one trailing internal lifetime anchor so nested region/node cleanup happens before the containing component owner ends;
+- conditional branches detach their complete active fragment before node and branch-owner teardown;
+- keyed items use explicit region-managed `ReactiveOwner` instances rather than an anonymous component owner attached to the first rendered node;
+- keyed item removal clears the complete detached range before item-owner cleanup while retained keys keep the same owner and DOM identity;
+- region-managed owners retain the ordinary context parent chain and the existing owner/effect/cleanup semantics; no second lifetime system is introduced.
+
+Exit condition: nested conditional cleanup and keyed multi-node cleanup are deterministic on both independent removal and containing-tree teardown, and late-created keyed items still inherit provider context.
+''',
+          )
+
+          replace_once(
+              "AGENTS.md",
+              '''- `show()` owns a condition-driven DOM region between stable anchors. Branch callbacks are lazy, branch construction is untracked by the selector, and each active branch has its own owner lifetime.
+- There are no component rerenders, dependency arrays, manual memoization hooks, or a virtual DOM.
+''',
+              '''- `show()` owns a condition-driven DOM region between stable anchors. Branch callbacks are lazy, branch construction is untracked by the selector, and each active branch has its own owner lifetime.
+- `keyed()` owns stable item ranges and region-managed item owners. Retained keys keep DOM and owner identity; removed ranges leave the live DOM before their item owner cleanup runs.
+- Empty and multi-node components use one trailing internal lifetime anchor so nested region teardown precedes containing-component cleanup; single-node components remain marker-free.
+- There are no component rerenders, dependency arrays, manual memoization hooks, or a virtual DOM.
+''',
+          )
+
+          replace_once(
+              "AGENTS.md",
+              '''The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX, keyed collections, and progressively more precise region ownership. Do not turn `show()` into a generic reconciler and do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.
+''',
+              '''The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX and the normalized comparison harness. Region ownership is now explicit for conditional branches and keyed item ranges; do not grow another lifetime abstraction unless a later control-flow primitive exposes a concrete gap. Do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.
+''',
+          )
+          PY
+
+      - name: Set up pinned Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format refinement
+        run: bun run format
+
+      - name: Run focused repository gates
+        run: |
+          bun run test:unit
+          bun run typecheck
+          bun run lint
+          bun run build
+
+      - name: Remove one-shot workflow and verify diff
+        run: |
+          rm .github/workflows/apply-region-ownership-refinement.yml
+          git diff --check
+
+      - name: Commit refinement
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: refine region ownership"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
