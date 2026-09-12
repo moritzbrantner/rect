@@ -50,14 +50,9 @@ if (!sameJson(manifestFixtureIds, comparisonFixtureIds)) {
   fail("published manifest fixture order does not match the comparison contract");
 }
 
-const port = Number(process.env.RECT_COMPARISON_PORT ?? "4173");
-if (!Number.isInteger(port) || port <= 0 || port > 65_535) {
-  fail("RECT_COMPARISON_PORT must be a valid TCP port");
-}
-
 const server = Bun.serve({
   hostname: "127.0.0.1",
-  port,
+  port: 4173,
   async fetch(request) {
     const url = new URL(request.url);
     const pathname = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
