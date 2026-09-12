@@ -59,7 +59,7 @@ jobs:
         run: bun run verify:comparison
 
       - name: Install pinned comparison browser
-        run: bunx playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
 
       - name: Verify published comparison protocol
         run: bun run verify:comparison:browser
