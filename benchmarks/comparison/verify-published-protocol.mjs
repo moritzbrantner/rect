@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 
 import { chromium } from "playwright";
 
-import { frameworkIds, keyedScenarioIds } from "../../examples/performance-lab/benchmark-contract.ts";
+import {
+  frameworkIds,
+  keyedScenarioIds,
+} from "../../examples/performance-lab/benchmark-contract.ts";
 import {
   comparisonBrowserContract,
   comparisonDependencyVersions,
@@ -190,7 +193,9 @@ try {
   requestedPaths.clear();
 
   await page.getByLabel("Keyed items").fill(String(comparisonBrowserContract.keyed.items));
-  await page.getByLabel("Samples per scenario").fill(String(comparisonBrowserContract.keyed.samples));
+  await page
+    .getByLabel("Samples per scenario")
+    .fill(String(comparisonBrowserContract.keyed.samples));
   await page.getByRole("button", { name: "Run keyed workload" }).click();
   await page.waitForFunction(
     () =>
@@ -219,7 +224,8 @@ try {
     fail("Rect keyed scenario order drifted from the published protocol contract");
   }
   for (const scenario of keyedResult.scenarios) {
-    if (scenario.verified !== true) fail(`${scenario.scenario} keyed correctness verification failed`);
+    if (scenario.verified !== true)
+      fail(`${scenario.scenario} keyed correctness verification failed`);
     assertDistribution(scenario.latencyMs, `${scenario.scenario}.latencyMs`);
     assertDistribution(scenario.mutationRecords, `${scenario.scenario}.mutationRecords`);
   }
