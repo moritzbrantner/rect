@@ -58,6 +58,12 @@ jobs:
       - name: Verify comparison boundary
         run: bun run verify:comparison
 
+      - name: Install pinned comparison browser
+        run: cd benchmarks/comparison && bun run browser:install
+
+      - name: Verify published comparison protocol
+        run: bun run verify:comparison:browser
+
       - name: Configure Pages
         if: github.event_name == 'push'
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

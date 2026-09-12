@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 import {
+  comparisonBrowserContract,
   comparisonBuildContract,
   comparisonDependencyVersions,
   comparisonFixtureIds,
@@ -25,6 +26,17 @@ test("comparison runtimes are isolated in one exact-version workspace", () => {
   }
 });
 
+test("comparison browser tooling stays pinned and outside Rect core", () => {
+  expect(comparisonPackage.devDependencies?.playwright).toBe(
+    comparisonBrowserContract.playwrightVersion,
+  );
+  expect(rootPackage.dependencies?.playwright).toBeUndefined();
+  expect(rootPackage.devDependencies?.playwright).toBeUndefined();
+  expect(rootPackage.scripts?.["verify:comparison:browser"]).toBe(
+    "bun benchmarks/comparison/verify-published-protocol.mjs",
+  );
+});
+
 test("browser fixture runner has no comparison-runtime import map", () => {
   expect(runner).not.toContain("esm.sh");
   expect(runner).not.toContain('type="importmap"');
@@ -47,4 +59,22 @@ test("comparison build contract is explicit and complete", () => {
     "preact",
     "solid",
   ]);
+});
+
+test("published browser acceptance uses bounded semantic smoke inputs", () => {
+  expect(comparisonBrowserContract).toEqual({
+    playwrightVersion: "1.63.0",
+    browser: "chromium",
+    fanout: {
+      nodes: 10,
+      updates: 5,
+      mountSamples: 15,
+      warmupUpdates: 5,
+    },
+    keyed: {
+      items: 10,
+      samples: 5,
+      warmupSamples: 5,
+    },
+  });
 });

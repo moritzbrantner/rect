@@ -132,10 +132,22 @@ Exit condition: authoritative validation and Pages build pass from the frozen bo
 
 ### 4.2 Compiler and protocol normalization
 
-Next, remove remaining semantic/tooling asymmetries before stronger comparison claims:
+The published protocol now has its first real-browser acceptance slice:
+
+- Playwright is pinned as comparison-only tooling and drives its matching Chromium build;
+- acceptance serves the built `dist/pages` output rather than a development source server;
+- the five-framework fan-out protocol runs with one bounded smoke configuration and every result must pass its existing correctness gate;
+- browser-visible manifest data and served asset bytes must match the build evidence;
+- React, Preact, and Solid must report the exact versions frozen by the comparison workspace;
+- the Rect-only keyed protocol must execute all five movement classes with its existing correctness contract;
+- unexpected external HTTP(S) runtime requests, page errors, or console errors fail closed;
+- no latency budget, winner score, or Rect runtime change is introduced by browser acceptance.
+
+Exit condition for the browser-acceptance slice: authoritative validation, Pages boundary verification, and the Chromium published-protocol check all pass from the same PR head.
+
+Remaining normalization work before stronger comparison claims:
 
 - compile Solid with its official compiler instead of the current compiler-shaped direct-DOM fixture;
-- add browser automation that verifies the published protocol and emitted manifest;
 - add equivalent batched/multi-value workloads rather than inferring scheduler behavior from one shared-text update;
 - add the Rect compiled fixture after Stage 1 exists;
 - promote keyed movement only after every compared runtime has an equivalent keyed correctness contract.
