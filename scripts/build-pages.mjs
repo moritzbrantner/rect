@@ -45,7 +45,8 @@ function readRevision(ref) {
     stderr: "pipe",
   });
   if (result.exitCode !== 0) return null;
-  return new TextDecoder().decode(result.stdout).trim();
+  const revision = new TextDecoder().decode(result.stdout).trim();
+  return revision.length > 0 ? revision : null;
 }
 
 function sourceRevision() {
@@ -72,6 +73,10 @@ async function build(config) {
 }
 
 verifyDeclaredBoundary();
+const revision = sourceRevision();
+if (!revision) {
+  throw new Error("Comparison evidence requires a resolvable source revision.");
+}
 
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(assetOutput, { recursive: true });
@@ -161,7 +166,7 @@ await Bun.write(
   `${JSON.stringify(
     {
       schemaVersion: comparisonBuildContract.schemaVersion,
-      sourceRevision: sourceRevision(),
+      sourceRevision: revision,
       toolchain: {
         bun: comparisonBuildContract.bunVersion,
         target: comparisonBuildContract.target,
