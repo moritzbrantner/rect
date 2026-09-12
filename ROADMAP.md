@@ -94,7 +94,15 @@ Next, add a keyed collection region with an explicit algorithm and stable item o
 
 ### 3.3 Region ownership refinement
 
-After conditional and keyed regions exist, tighten ownership for independently removable nested fragments where the two primitives expose a concrete need. Do not introduce a second lifetime model beside the owner tree.
+Control-flow regions now tighten ownership only where conditional and keyed removal made the first-child lifetime shortcut ambiguous:
+
+- empty and multi-node components use one trailing internal lifetime anchor so nested region/node cleanup happens before the containing component owner ends;
+- conditional branches detach their complete active fragment before node and branch-owner teardown;
+- keyed items use explicit region-managed `ReactiveOwner` instances rather than an anonymous component owner attached to the first rendered node;
+- keyed item removal clears the complete detached range before item-owner cleanup while retained keys keep the same owner and DOM identity;
+- region-managed owners retain the ordinary context parent chain and the existing owner/effect/cleanup semantics; no second lifetime system is introduced.
+
+Exit condition: nested conditional cleanup and keyed multi-node cleanup are deterministic on both independent removal and containing-tree teardown, and late-created keyed items still inherit provider context.
 
 ## Stage 4 — normalized comparison harness
 
