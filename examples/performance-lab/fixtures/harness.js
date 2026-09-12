@@ -64,6 +64,36 @@ function assertFixture(instance, expected) {
   }
 }
 
+function assertKeyedFixture(beforeEntries, afterEntries, expectedEntries) {
+  if (afterEntries.length !== expectedEntries.length) {
+    throw new Error(
+      `Keyed correctness check failed: expected ${expectedEntries.length} items, got ${afterEntries.length}.`,
+    );
+  }
+
+  const beforeByKey = new Map(beforeEntries.map((entry) => [entry.key, entry.node]));
+  for (let index = 0; index < expectedEntries.length; index += 1) {
+    const expected = expectedEntries[index];
+    const actual = afterEntries[index];
+    if (!expected || !actual) throw new Error("Keyed correctness check lost an expected row.");
+    if (actual.key !== expected.id) {
+      throw new Error(
+        `Keyed order check failed at ${index}: expected ${expected.id}, got ${actual.key}.`,
+      );
+    }
+    if (actual.text !== `${index}:${expected.label}`) {
+      throw new Error(
+        `Keyed reactive text check failed for ${expected.id}: expected ${index}:${expected.label}, got ${actual.text}.`,
+      );
+    }
+
+    const previousNode = beforeByKey.get(actual.key);
+    if (previousNode && previousNode !== actual.node) {
+      throw new Error(`Keyed DOM identity check failed for retained key ${actual.key}.`);
+    }
+  }
+}
+
 async function run(config) {
   const mountSamples = [];
   let firstMountMs = 0;
@@ -127,14 +157,131 @@ async function run(config) {
   return result;
 }
 
+function prepareKeyedOperation(instance, scenario, sample) {
+  instance.resetKeyed();
+  return {
+    beforeEntries: instance.readKeyedEntries(),
+    expectedEntries: instance.prepareKeyed(scenario, sample),
+  };
+}
+
+function verifyKeyedOperation(instance, beforeEntries, expectedEntries) {
+  const afterEntries = instance.readKeyedEntries();
+  assertKeyedFixture(beforeEntries, afterEntries, expectedEntries);
+}
+
+function runKeyedLatencyOperation(instance, scenario, sample) {
+  const { beforeEntries, expectedEntries } = prepareKeyedOperation(instance, scenario, sample);
+  const start = performance.now();
+  instance.applyKeyed(expectedEntries);
+  const latencyMs = performance.now() - start;
+  verifyKeyedOperation(instance, beforeEntries, expectedEntries);
+  return latencyMs;
+}
+
+function runKeyedMutationOperation(instance, scenario, sample) {
+  const { beforeEntries, expectedEntries } = prepareKeyedOperation(instance, scenario, sample);
+  const observer = new MutationObserver(() => undefined);
+  observer.observe(target, { subtree: true, characterData: true, childList: true });
+
+  try {
+    instance.applyKeyed(expectedEntries);
+    const mutationRecords = observer.takeRecords().length;
+    verifyKeyedOperation(instance, beforeEntries, expectedEntries);
+    return mutationRecords;
+  } finally {
+    observer.disconnect();
+  }
+}
+
+async function runKeyed(config) {
+  if (framework !== "rect") {
+    throw new Error("Keyed benchmark is available only for the Rect reference fixture.");
+  }
+
+  const keyedAdapterModule = await import("./assets/rect-keyed.js");
+  const keyedAdapter = keyedAdapterModule.default;
+  if (typeof keyedAdapter.mount !== "function") {
+    throw new Error("Rect keyed benchmark has no mount implementation.");
+  }
+  if (!Array.isArray(keyedAdapter.keyedScenarios) || keyedAdapter.keyedScenarios.length === 0) {
+    throw new Error("Rect keyed benchmark has no declared scenarios.");
+  }
+
+  target.replaceChildren();
+  const instance = keyedAdapter.mount(target, config.items);
+  try {
+    const scenarios = [];
+    for (const scenario of keyedAdapter.keyedScenarios) {
+      for (let sample = 0; sample < config.warmupSamples; sample += 1) {
+        runKeyedLatencyOperation(instance, scenario, sample);
+      }
+
+      const latencySamples = [];
+      for (let sample = 0; sample < config.samples; sample += 1) {
+        latencySamples.push(
+          runKeyedLatencyOperation(instance, scenario, config.warmupSamples + sample),
+        );
+      }
+
+      for (let sample = 0; sample < config.warmupSamples; sample += 1) {
+        runKeyedMutationOperation(instance, scenario, sample);
+      }
+
+      const mutationSamples = [];
+      for (let sample = 0; sample < config.samples; sample += 1) {
+        mutationSamples.push(
+          runKeyedMutationOperation(instance, scenario, config.warmupSamples + sample),
+        );
+      }
+
+      scenarios.push({
+        scenario,
+        latencyMs: distribution(latencySamples),
+        mutationRecords: distribution(mutationSamples),
+        verified: true,
+      });
+    }
+
+    return {
+      framework: "rect",
+      config,
+      scenarios,
+      verified: true,
+      notes: [
+        "Each measured operation starts from the same baseline ordering.",
+        "Correctness requires expected key order, reactive item/index text, and DOM identity for every retained key.",
+        "Latency and mutation records are collected in separate correctness-gated passes so observer instrumentation is excluded from latency samples.",
+        "Mutation counts are MutationObserver records, not a normalized browser work unit.",
+        "This is Rect-only browser evidence and does not support a cross-framework performance ranking.",
+      ],
+    };
+  } finally {
+    instance.dispose();
+    target.replaceChildren();
+  }
+}
+
 window.addEventListener("message", async (event) => {
   if (event.origin !== window.location.origin || event.source !== window.parent) return;
   const message = event.data;
-  if (!message || message.type !== "rect:benchmark-run") return;
+  if (!message || typeof message !== "object") return;
+  if (message.type !== "rect:benchmark-run" && message.type !== "rect:keyed-benchmark-run") return;
+
   try {
-    const result = await run(message.config);
+    const result =
+      message.type === "rect:keyed-benchmark-run"
+        ? await runKeyed(message.config)
+        : await run(message.config);
     window.parent.postMessage(
-      { type: "rect:benchmark-result", runId: message.runId, result },
+      {
+        type:
+          message.type === "rect:keyed-benchmark-run"
+            ? "rect:keyed-benchmark-result"
+            : "rect:benchmark-result",
+        runId: message.runId,
+        result,
+      },
       window.location.origin,
     );
   } catch (error) {
