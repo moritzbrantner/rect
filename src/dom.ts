@@ -216,23 +216,23 @@ function disposeConditionalBranch(
   end: Comment,
   owner: ReactiveOwner | undefined,
 ): void {
-  let firstError: unknown;
-  let hasError = false;
+  const detached = document.createDocumentFragment();
   let node = start.nextSibling;
-
   while (node && node !== end) {
     const next = node.nextSibling;
-    try {
-      disposeTree(node);
-    } catch (error) {
-      if (!hasError) {
-        firstError = error;
-        hasError = true;
-      }
-    }
-    node.parentNode?.removeChild(node);
+    detached.appendChild(node);
     node = next;
   }
+
+  let firstError: unknown;
+  let hasError = false;
+  try {
+    disposeDetachedTree(detached);
+  } catch (error) {
+    firstError = error;
+    hasError = true;
+  }
+  detached.replaceChildren();
 
   if (owner) {
     try {
@@ -347,7 +347,14 @@ export function jsx(
     }
 
     const fragment = document.createDocumentFragment();
-    appendChild(fragment, child);
+    try {
+      appendChild(fragment, child);
+    } catch (error) {
+      disposeDetachedTree(fragment);
+      disposeOwner(owner);
+      throw error;
+    }
+
     const dispose = () => disposeOwner(owner);
     if (fragment.childNodes.length === 1) {
       const node = fragment.firstChild as Node;
@@ -355,7 +362,11 @@ export function jsx(
       registerDisposer(node, dispose);
       return node;
     }
-    registerDisposer(fragment, dispose);
+
+    const lifetimeAnchor = document.createComment("rect:component:end");
+    fragment.appendChild(lifetimeAnchor);
+    moveDisposers(fragment, lifetimeAnchor);
+    registerDisposer(lifetimeAnchor, dispose);
     return fragment;
   }
 
