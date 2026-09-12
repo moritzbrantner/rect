@@ -1,6 +1,8 @@
 import { jsx, mount, type Child } from "./dom.ts";
 import {
   batch,
+  createRegionOwner,
+  disposeOwner,
   effect,
   getOwner,
   onCleanup,
@@ -43,8 +45,48 @@ function createRecord<T, K extends Key>(
   const carrier = document.createDocumentFragment();
   const start = document.createComment("rect:keyed:item");
   const end = document.createComment("/rect:keyed:item");
-  const child = runWithOwner(owner, () => jsx(() => untrack(() => render(item, index)), null));
-  const dispose = mount([start, child, end], carrier as unknown as Element);
+  const itemOwner = createRegionOwner(owner);
+
+  let child: Child;
+  try {
+    child = runWithOwner(itemOwner, () => untrack(() => render(item, index)));
+  } catch (error) {
+    disposeOwner(itemOwner);
+    throw error;
+  }
+
+  let disposeDom: () => void;
+  try {
+    disposeDom = mount([start, child, end], carrier as unknown as Element);
+  } catch (error) {
+    try {
+      mount(null, carrier as unknown as Element);
+    } catch {
+      // Preserve the original construction failure while making a best-effort DOM cleanup.
+    }
+    disposeOwner(itemOwner);
+    throw error;
+  }
+
+  const dispose = () => {
+    let firstError: unknown;
+    let hasError = false;
+    try {
+      disposeDom();
+    } catch (error) {
+      firstError = error;
+      hasError = true;
+    }
+    try {
+      disposeOwner(itemOwner);
+    } catch (error) {
+      if (!hasError) {
+        firstError = error;
+        hasError = true;
+      }
+    }
+    if (hasError) throw firstError;
+  };
 
   return {
     carrier,
