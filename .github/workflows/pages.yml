@@ -59,7 +59,7 @@ jobs:
         run: bun run verify:comparison
 
       - name: Install pinned comparison browser
-        run: bun --cwd benchmarks/comparison run browser:install
+        run: cd benchmarks/comparison && bun run browser:install
 
       - name: Verify published comparison protocol
         run: bun run verify:comparison:browser
