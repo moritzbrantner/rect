@@ -7,6 +7,8 @@ on:
     paths:
       - .github/workflows/finalize-comparison-boundary.yml
       - tsconfig.json
+      - benchmarks/comparison/**
+      - scripts/build-pages.mjs
 
 permissions:
   contents: write
