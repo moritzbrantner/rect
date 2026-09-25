@@ -21,7 +21,7 @@ class BenchmarkView extends Component {
 }
 
 function flushBatchedUpdates(run) {
-  const previousDebounceRendering = options.debounceRendering;
+  const previousDebounceRendering = Reflect.get(options, "debounceRendering");
   let scheduledFlush = null;
   options.debounceRendering = (callback) => {
     scheduledFlush ??= callback;
