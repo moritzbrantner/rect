@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   comparisonBuildContract,
+  comparisonCompilerVersions,
   comparisonDependencyVersions,
   comparisonFixtureIds,
 } from "../benchmarks/comparison/contract.ts";
@@ -61,9 +62,33 @@ for (const [name, version] of Object.entries(comparisonDependencyVersions)) {
   }
 }
 
+for (const [name, version] of Object.entries(comparisonCompilerVersions)) {
+  if (comparisonPackage.devDependencies?.[name] !== version) {
+    fail(`${name} is not pinned to ${version} in comparison devDependencies`);
+  }
+  if (rootPackage.dependencies?.[name] || rootPackage.devDependencies?.[name]) {
+    fail(`${name} leaked into @rect/core dependencies`);
+  }
+  if (manifest.dependencyBoundary?.compilerTools?.[name] !== version) {
+    fail(`${name} compiler evidence is missing or has the wrong version`);
+  }
+}
+
 const actualFixtureIds = manifest.fixtures?.map((fixture) => fixture.id) ?? [];
 if (JSON.stringify(actualFixtureIds) !== JSON.stringify(comparisonFixtureIds)) {
   fail("manifest fixture order does not match the declared contract");
+}
+
+const solidFixture = manifest.fixtures?.find((fixture) => fixture.id === "solid");
+if (
+  solidFixture?.compiler?.package !== "babel-preset-solid" ||
+  solidFixture.compiler.version !== comparisonCompilerVersions["babel-preset-solid"] ||
+  solidFixture.compiler.hostPackage !== "@babel/core" ||
+  solidFixture.compiler.hostVersion !== comparisonCompilerVersions["@babel/core"] ||
+  solidFixture.compiler.generate !== "dom" ||
+  solidFixture.compiler.hydratable !== false
+) {
+  fail("Solid fixture does not record the official DOM compiler contract");
 }
 
 const bareRuntimeImport =
