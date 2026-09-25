@@ -2,8 +2,12 @@ import { cp, mkdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { transformAsync } from "@babel/core";
+import solidPreset from "babel-preset-solid";
+
 import {
   comparisonBuildContract,
+  comparisonCompilerVersions,
   comparisonDependencyVersions,
   comparisonFixtureIds,
 } from "../benchmarks/comparison/contract.ts";
@@ -34,6 +38,15 @@ function verifyDeclaredBoundary() {
     }
     if (rootPackage.dependencies?.[name] || rootPackage.devDependencies?.[name]) {
       throw new Error(`Comparison dependency ${name} must stay outside @rect/core dependencies.`);
+    }
+  }
+
+  for (const [name, version] of Object.entries(comparisonCompilerVersions)) {
+    if (comparisonPackage.devDependencies?.[name] !== version) {
+      throw new Error(`Comparison compiler ${name} must be pinned to ${version}.`);
+    }
+    if (rootPackage.dependencies?.[name] || rootPackage.devDependencies?.[name]) {
+      throw new Error(`Comparison compiler ${name} must stay outside @rect/core dependencies.`);
     }
   }
 }
@@ -71,6 +84,30 @@ async function build(config) {
   }
   return result;
 }
+
+const solidCompilerPlugin = {
+  name: "solid-compiler",
+  setup(build) {
+    build.onLoad({ filter: /solid\.jsx$/ }, async ({ path }) => {
+      const source = await Bun.file(path).text();
+      const transformed = await transformAsync(source, {
+        filename: path,
+        sourceType: "module",
+        babelrc: false,
+        configFile: false,
+        sourceMaps: false,
+        presets: [[solidPreset, { generate: "dom", hydratable: false }]],
+      });
+      if (!transformed?.code) {
+        throw new Error("Solid compiler did not emit JavaScript.");
+      }
+      return {
+        contents: transformed.code,
+        loader: "js",
+      };
+    });
+  },
+};
 
 verifyDeclaredBoundary();
 const revision = sourceRevision();
@@ -126,8 +163,17 @@ const fixtures = [
   },
   {
     id: "solid",
-    entrypoint: "benchmarks/comparison/fixtures/solid.js",
+    entrypoint: "benchmarks/comparison/fixtures/solid.jsx",
     dependencies: { "solid-js": comparisonDependencyVersions["solid-js"] },
+    plugins: [solidCompilerPlugin],
+    compiler: {
+      package: "babel-preset-solid",
+      version: comparisonCompilerVersions["babel-preset-solid"],
+      hostPackage: "@babel/core",
+      hostVersion: comparisonCompilerVersions["@babel/core"],
+      generate: "dom",
+      hydratable: false,
+    },
   },
 ];
 
@@ -146,6 +192,7 @@ for (const fixture of fixtures) {
     packages: comparisonBuildContract.packages,
     reactCompiler: fixture.reactCompiler ?? false,
     jsx: fixture.jsx,
+    plugins: fixture.plugins,
   });
 
   const asset = `assets/${fixture.id}.js`;
@@ -156,6 +203,7 @@ for (const fixture of fixtures) {
     bundleBytes: assetStats.size,
     dependencies: fixture.dependencies,
     reactCompiler: fixture.reactCompiler ?? false,
+    compiler: fixture.compiler ?? null,
   });
 }
 
@@ -179,6 +227,7 @@ await Bun.write(
         lockfile: "bun.lock",
         externalRuntimeImports: false,
         packages: comparisonDependencyVersions,
+        compilerTools: comparisonCompilerVersions,
       },
       fixtures: fixtureEvidence,
     },
