@@ -187,6 +187,61 @@ try {
 
   requestedPaths.clear();
 
+  await page
+    .getByRole("spinbutton", { name: "Independent values" })
+    .fill(String(comparisonBrowserContract.batched.values));
+  await page
+    .getByRole("spinbutton", { name: "Measured batches" })
+    .fill(String(comparisonBrowserContract.batched.updates));
+  await page.getByRole("button", { name: "Run batched values" }).click();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('section[aria-labelledby="batched-benchmark-title"] .progress')
+        ?.textContent?.trim()
+        .startsWith("Finished "),
+    undefined,
+    { timeout: 60_000 },
+  );
+
+  const batchedText = await page
+    .locator('section[aria-labelledby="batched-evidence-title"] pre')
+    .textContent();
+  if (!batchedText) fail("batched evidence output is empty");
+  const batchedResults = JSON.parse(batchedText);
+  if (!Array.isArray(batchedResults) || batchedResults.length !== frameworkIds.length) {
+    fail("batched run did not return one result per framework");
+  }
+
+  for (let index = 0; index < frameworkIds.length; index += 1) {
+    const framework = frameworkIds[index];
+    const result = batchedResults[index];
+    if (!result || result.framework !== framework) {
+      fail(`batched result ${index} does not match framework ${framework}`);
+    }
+    if (result.verified !== true) fail(`${framework} batched correctness verification failed`);
+    if (!sameJson(result.config, comparisonBrowserContract.batched)) {
+      fail(`${framework} batched config drifted from the browser acceptance contract`);
+    }
+
+    assertDistribution(result.updateMs, `${framework}.batched.updateMs`);
+    assertDistribution(result.mutationRecords, `${framework}.batched.mutationRecords`);
+
+    const expectedVersion = expectedVersions[framework];
+    if (expectedVersion && result.version !== expectedVersion) {
+      fail(
+        `${framework} batched run reported ${result.version} instead of pinned version ${expectedVersion}`,
+      );
+    }
+
+    const fixture = manifestById.get(framework);
+    if (!fixture || !requestedPaths.has(`/fixtures/${fixture.asset}`)) {
+      fail(`${framework} batched fixture asset was not loaded through the published runner`);
+    }
+  }
+
+  requestedPaths.clear();
+
   await page.getByLabel("Keyed items").fill(String(comparisonBrowserContract.keyed.items));
   await page
     .getByLabel("Samples per scenario")
@@ -244,6 +299,7 @@ try {
       browser: comparisonBrowserContract.browser,
       browserVersion,
       fanoutFrameworks: frameworkIds,
+      batchedFrameworks: frameworkIds,
       keyedScenarios: keyedScenarioIds,
       externalRequests: 0,
     }),

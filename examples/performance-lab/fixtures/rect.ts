@@ -1,5 +1,5 @@
 import { jsx, mount } from "../../../src/dom.ts";
-import { state } from "../../../src/reactivity.ts";
+import { batch, state } from "../../../src/reactivity.ts";
 
 export default {
   label: "Rect",
@@ -27,6 +27,33 @@ export default {
       readLast() {
         const cells = target.querySelectorAll(".fixture-cell");
         return cells.item(cells.length - 1).textContent ?? "";
+      },
+      dispose,
+    };
+  },
+  batchedNotes: [
+    "Each cell owns an independent Rect state; batch() groups all setters into one downstream flush.",
+  ],
+  mountBatched(target: HTMLElement, valueCount: number) {
+    const entries = Array.from({ length: valueCount }, (_, index) => state(index));
+    const cells = entries.map(([value]) =>
+      jsx("span", { className: "fixture-cell", children: value }),
+    );
+    const dispose = mount(jsx("div", { className: "fixture-grid", children: cells }), target);
+
+    return {
+      update(base: number) {
+        batch(() => {
+          for (let index = 0; index < entries.length; index += 1) {
+            entries[index]?.[1](base + index);
+          }
+        });
+      },
+      readValues() {
+        return Array.from(
+          target.querySelectorAll(".fixture-cell"),
+          (cell) => cell.textContent ?? "",
+        );
       },
       dispose,
     };
