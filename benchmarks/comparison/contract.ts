@@ -5,6 +5,11 @@ export const comparisonDependencyVersions = {
   "solid-js": "1.9.15",
 } as const;
 
+export const comparisonCompilerVersions = {
+  "@babel/core": "7.29.7",
+  "babel-preset-solid": "1.9.15",
+} as const;
+
 export const comparisonFixtureIds = [
   "rect",
   "rect-keyed",
