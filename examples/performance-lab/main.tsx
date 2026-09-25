@@ -362,9 +362,7 @@ function App(): Node {
       for (const [index, framework] of frameworkIds.entries()) {
         const row = batchedRowById.get(framework);
         row?.setStatus("Running");
-        setBatchedProgress(
-          `Running ${labels[framework]} (${index + 1}/${frameworkIds.length})…`,
-        );
+        setBatchedProgress(`Running ${labels[framework]} (${index + 1}/${frameworkIds.length})…`);
         try {
           const result = await runFrameworkBatchedBenchmark(framework, config);
           results.push(result);

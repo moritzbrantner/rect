@@ -46,10 +46,7 @@ function fixtureUrl(framework: FrameworkId): string {
 async function runFixture<Result extends FixtureRunResult>(
   framework: FrameworkId,
   config: FixtureRunConfig,
-  requestType:
-    | "rect:benchmark-run"
-    | "rect:batched-benchmark-run"
-    | "rect:keyed-benchmark-run",
+  requestType: "rect:benchmark-run" | "rect:batched-benchmark-run" | "rect:keyed-benchmark-run",
   resultType:
     | "rect:benchmark-result"
     | "rect:batched-benchmark-result"
