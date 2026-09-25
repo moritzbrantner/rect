@@ -1,0 +1,39 @@
+import { createSignal } from "solid-js";
+import { render } from "solid-js/web";
+
+export default {
+  label: "Solid",
+  version: "1.9.15",
+  implementation: "Solid 1.9.15 · babel-preset-solid 1.9.15 DOM output",
+  assetUrl: import.meta.url,
+  notes: [
+    "The fixture is authored as Solid JSX and compiled with the matching official babel-preset-solid DOM transform before Bun bundles it.",
+  ],
+  mount(target, nodeCount) {
+    let setValue = null;
+    const dispose = render(() => {
+      const [value, writeValue] = createSignal(0);
+      setValue = writeValue;
+      const cells = Array.from({ length: nodeCount }, () => (
+        <span class="fixture-cell">{value()}</span>
+      ));
+      return <div class="fixture-grid">{cells}</div>;
+    }, target);
+
+    if (!setValue) throw new Error("Solid benchmark setter did not mount.");
+
+    return {
+      update(nextValue) {
+        setValue(nextValue);
+      },
+      readFirst() {
+        return target.querySelector(".fixture-cell")?.textContent ?? "";
+      },
+      readLast() {
+        const cells = target.querySelectorAll(".fixture-cell");
+        return cells.item(cells.length - 1).textContent ?? "";
+      },
+      dispose,
+    };
+  },
+};
