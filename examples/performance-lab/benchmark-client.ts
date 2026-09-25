@@ -1,5 +1,8 @@
 import {
   frameworkIds,
+  type BatchedBenchmarkConfig,
+  type BatchedBenchmarkResult,
+  type BatchedResultMessage,
   type BenchmarkConfig,
   type BenchmarkResult,
   type ErrorMessage,
@@ -14,9 +17,9 @@ import {
 
 const fixtureTimeoutMs = 60_000;
 
-type FixtureRunConfig = BenchmarkConfig | KeyedBenchmarkConfig;
-type FixtureRunResult = BenchmarkResult | KeyedBenchmarkResult;
-type ResultFixtureMessage = ResultMessage | KeyedResultMessage;
+type FixtureRunConfig = BenchmarkConfig | BatchedBenchmarkConfig | KeyedBenchmarkConfig;
+type FixtureRunResult = BenchmarkResult | BatchedBenchmarkResult | KeyedBenchmarkResult;
+type ResultFixtureMessage = ResultMessage | BatchedResultMessage | KeyedResultMessage;
 
 function isFrameworkId(value: string | null): value is FrameworkId {
   return frameworkIds.includes(value as FrameworkId);
@@ -28,6 +31,7 @@ function isFixtureMessage(value: unknown): value is FixtureMessage {
   return (
     type === "rect:benchmark-ready" ||
     type === "rect:benchmark-result" ||
+    type === "rect:batched-benchmark-result" ||
     type === "rect:keyed-benchmark-result" ||
     type === "rect:benchmark-error"
   );
@@ -42,8 +46,14 @@ function fixtureUrl(framework: FrameworkId): string {
 async function runFixture<Result extends FixtureRunResult>(
   framework: FrameworkId,
   config: FixtureRunConfig,
-  requestType: "rect:benchmark-run" | "rect:keyed-benchmark-run",
-  resultType: "rect:benchmark-result" | "rect:keyed-benchmark-result",
+  requestType:
+    | "rect:benchmark-run"
+    | "rect:batched-benchmark-run"
+    | "rect:keyed-benchmark-run",
+  resultType:
+    | "rect:benchmark-result"
+    | "rect:batched-benchmark-result"
+    | "rect:keyed-benchmark-result",
 ): Promise<Result> {
   return await new Promise((resolve, reject) => {
     const iframe = document.createElement("iframe");
@@ -118,6 +128,18 @@ export async function runFrameworkBenchmark(
     config,
     "rect:benchmark-run",
     "rect:benchmark-result",
+  );
+}
+
+export async function runFrameworkBatchedBenchmark(
+  framework: FrameworkId,
+  config: BatchedBenchmarkConfig,
+): Promise<BatchedBenchmarkResult> {
+  return await runFixture<BatchedBenchmarkResult>(
+    framework,
+    config,
+    "rect:batched-benchmark-run",
+    "rect:batched-benchmark-result",
   );
 }
 
