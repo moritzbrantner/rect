@@ -188,9 +188,9 @@ try {
   requestedPaths.clear();
 
   await page
-    .getByLabel("Independent values")
+    .getByRole("spinbutton", { name: "Independent values" })
     .fill(String(comparisonBrowserContract.batched.values));
-  await page.getByLabel("Measured batches").fill(String(comparisonBrowserContract.batched.updates));
+  await page.getByRole("spinbutton", { name: "Measured batches" }).fill(String(comparisonBrowserContract.batched.updates));
   await page.getByRole("button", { name: "Run batched values" }).click();
   await page.waitForFunction(
     () =>
