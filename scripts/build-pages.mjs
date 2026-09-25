@@ -2,9 +2,7 @@ import { cp, mkdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { transformAsync } from "@babel/core";
-import solidPreset from "babel-preset-solid";
-
+import { compileSolidJsx } from "../benchmarks/comparison/compile-solid.mjs";
 import {
   comparisonBuildContract,
   comparisonCompilerVersions,
@@ -90,19 +88,8 @@ const solidCompilerPlugin = {
   setup(build) {
     build.onLoad({ filter: /solid\.jsx$/ }, async ({ path }) => {
       const source = await Bun.file(path).text();
-      const transformed = await transformAsync(source, {
-        filename: path,
-        sourceType: "module",
-        babelrc: false,
-        configFile: false,
-        sourceMaps: false,
-        presets: [[solidPreset, { generate: "dom", hydratable: false }]],
-      });
-      if (!transformed?.code) {
-        throw new Error("Solid compiler did not emit JavaScript.");
-      }
       return {
-        contents: transformed.code,
+        contents: await compileSolidJsx(source, path),
         loader: "js",
       };
     });
