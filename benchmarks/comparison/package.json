@@ -13,6 +13,8 @@
     "solid-js": "1.9.15"
   },
   "devDependencies": {
+    "@babel/core": "7.29.7",
+    "babel-preset-solid": "1.9.15",
     "playwright": "1.63.0"
   },
   "packageManager": "bun@1.4.0"
