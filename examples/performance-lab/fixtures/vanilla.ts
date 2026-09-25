@@ -35,4 +35,35 @@ export default {
       },
     };
   },
+  batchedNotes: [
+    "Independent text nodes are updated in one direct synchronous loop as the lower-level batch reference.",
+  ],
+  mountBatched(target: HTMLElement, valueCount: number) {
+    const root = document.createElement("div");
+    root.className = "fixture-grid";
+    const textNodes = Array.from({ length: valueCount }, (_, index) => {
+      const cell = document.createElement("span");
+      cell.className = "fixture-cell";
+      const text = document.createTextNode(String(index));
+      cell.appendChild(text);
+      root.appendChild(cell);
+      return text;
+    });
+    target.replaceChildren(root);
+
+    return {
+      update(base: number) {
+        for (let index = 0; index < textNodes.length; index += 1) {
+          const text = textNodes[index];
+          if (text) text.data = String(base + index);
+        }
+      },
+      readValues() {
+        return textNodes.map((text) => text.data);
+      },
+      dispose() {
+        target.replaceChildren();
+      },
+    };
+  },
 };
