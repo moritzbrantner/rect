@@ -75,3 +75,7 @@ A compiler optimization must preserve a small non-compiler reference behavior so
 ## Next decision horizon
 
 The next work should stay within the issues described in `ROADMAP.md`: compiler-assisted static JSX and the normalized comparison harness. Region ownership is now explicit for conditional branches and keyed item ranges; do not grow another lifetime abstraction unless a later control-flow primitive exposes a concrete gap. Do not pre-design routing, server components, legacy compatibility, or a broad ecosystem.
+
+## Merging
+
+- `main` requires linear history: merge pull requests with `gh pr merge --squash --delete-branch` (exception to GIT-006).
