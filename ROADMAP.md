@@ -145,10 +145,20 @@ The published protocol now has its first real-browser acceptance slice:
 
 Exit condition for the browser-acceptance slice: authoritative validation, Pages boundary verification, and the Chromium published-protocol check all pass from the same PR head.
 
+### 4.3 Compiler fidelity and batched multi-value parity
+
+The normalized harness now exercises more than one shared accessor:
+
+- Solid JSX is transformed with its matching pinned official DOM compiler before Bun bundles the fixture;
+- Rect, React, Preact, Solid, and vanilla each expose a batched workload with independently owned values rather than aliases of one shared state value;
+- one logical update changes every independent value, using each runtime's batching/render-queue boundary while keeping the measured operation synchronous;
+- latency and MutationObserver evidence run in separate passes so observer instrumentation is excluded from latency samples;
+- browser acceptance correctness-checks every emitted value and verifies the same bounded batched protocol for all five implementations.
+
+Exit condition: authoritative validation, Pages boundary verification, and Chromium acceptance pass with both shared fan-out and independent batched-value protocols.
+
 Remaining normalization work before stronger comparison claims:
 
-- compile Solid with its official compiler instead of the current compiler-shaped direct-DOM fixture;
-- add equivalent batched/multi-value workloads rather than inferring scheduler behavior from one shared-text update;
 - add the Rect compiled fixture after Stage 1 exists;
 - promote keyed movement only after every compared runtime has an equivalent keyed correctness contract.
 

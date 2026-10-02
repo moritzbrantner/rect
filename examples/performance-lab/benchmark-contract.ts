@@ -17,6 +17,12 @@ export type BenchmarkConfig = {
   warmupUpdates: number;
 };
 
+export type BatchedBenchmarkConfig = {
+  values: number;
+  updates: number;
+  warmupUpdates: number;
+};
+
 export type KeyedBenchmarkConfig = {
   items: number;
   samples: number;
@@ -42,6 +48,18 @@ export type BenchmarkResult = {
   appBundleBytes: number | null;
   runtimeTransferBytes: number | null;
   heapDeltaBytes: number | null;
+  verified: boolean;
+  notes: readonly string[];
+};
+
+export type BatchedBenchmarkResult = {
+  framework: FrameworkId;
+  label: string;
+  version: string;
+  implementation: string;
+  config: BatchedBenchmarkConfig;
+  updateMs: Distribution;
+  mutationRecords: Distribution;
   verified: boolean;
   notes: readonly string[];
 };
@@ -78,6 +96,18 @@ export type ResultMessage = {
   result: BenchmarkResult;
 };
 
+export type BatchedRunMessage = {
+  type: "rect:batched-benchmark-run";
+  runId: string;
+  config: BatchedBenchmarkConfig;
+};
+
+export type BatchedResultMessage = {
+  type: "rect:batched-benchmark-result";
+  runId: string;
+  result: BatchedBenchmarkResult;
+};
+
 export type KeyedRunMessage = {
   type: "rect:keyed-benchmark-run";
   runId: string;
@@ -96,4 +126,9 @@ export type ErrorMessage = {
   message: string;
 };
 
-export type FixtureMessage = ReadyMessage | ResultMessage | KeyedResultMessage | ErrorMessage;
+export type FixtureMessage =
+  | ReadyMessage
+  | ResultMessage
+  | BatchedResultMessage
+  | KeyedResultMessage
+  | ErrorMessage;

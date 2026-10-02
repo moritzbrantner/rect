@@ -64,6 +64,23 @@ function assertFixture(instance, expected) {
   }
 }
 
+function assertBatchedFixture(instance, base, valueCount) {
+  const values = instance.readValues();
+  if (values.length !== valueCount) {
+    throw new Error(
+      `Batched correctness check failed: expected ${valueCount} values, got ${values.length}.`,
+    );
+  }
+  for (let index = 0; index < valueCount; index += 1) {
+    const expected = String(base + index);
+    if (values[index] !== expected) {
+      throw new Error(
+        `Batched correctness check failed at ${index}: expected ${expected}, got ${values[index]}.`,
+      );
+    }
+  }
+}
+
 function assertKeyedFixture(beforeEntries, afterEntries, expectedEntries) {
   if (afterEntries.length !== expectedEntries.length) {
     throw new Error(
@@ -155,6 +172,86 @@ async function run(config) {
   instance.dispose();
   target.replaceChildren();
   return result;
+}
+
+function batchedBase(config, iteration) {
+  return iteration * config.values;
+}
+
+function warmBatched(instance, config) {
+  for (let index = 1; index <= config.warmupUpdates; index += 1) {
+    instance.update(batchedBase(config, index));
+  }
+  assertBatchedFixture(instance, batchedBase(config, config.warmupUpdates), config.values);
+}
+
+async function runBatched(config) {
+  if (typeof adapter.mountBatched !== "function") {
+    throw new Error(`${framework} fixture has no batched multi-value implementation.`);
+  }
+
+  target.replaceChildren();
+  const latencyInstance = adapter.mountBatched(target, config.values);
+  const updateSamples = [];
+  try {
+    assertBatchedFixture(latencyInstance, 0, config.values);
+    warmBatched(latencyInstance, config);
+
+    for (let index = 1; index <= config.updates; index += 1) {
+      const base = batchedBase(config, config.warmupUpdates + index);
+      const start = performance.now();
+      latencyInstance.update(base);
+      updateSamples.push(performance.now() - start);
+    }
+    assertBatchedFixture(
+      latencyInstance,
+      batchedBase(config, config.warmupUpdates + config.updates),
+      config.values,
+    );
+  } finally {
+    latencyInstance.dispose();
+    target.replaceChildren();
+  }
+
+  const mutationSamples = [];
+  const mutationInstance = adapter.mountBatched(target, config.values);
+  try {
+    assertBatchedFixture(mutationInstance, 0, config.values);
+    warmBatched(mutationInstance, config);
+
+    const observer = new MutationObserver(() => undefined);
+    observer.observe(target, { subtree: true, characterData: true, childList: true });
+    try {
+      for (let index = 1; index <= config.updates; index += 1) {
+        const base = batchedBase(config, config.warmupUpdates + index);
+        mutationInstance.update(base);
+        mutationSamples.push(observer.takeRecords().length);
+      }
+    } finally {
+      observer.disconnect();
+    }
+
+    assertBatchedFixture(
+      mutationInstance,
+      batchedBase(config, config.warmupUpdates + config.updates),
+      config.values,
+    );
+  } finally {
+    mutationInstance.dispose();
+    target.replaceChildren();
+  }
+
+  return {
+    framework,
+    label: adapter.label,
+    version: adapter.version,
+    implementation: adapter.implementation,
+    config,
+    updateMs: distribution(updateSamples),
+    mutationRecords: distribution(mutationSamples),
+    verified: true,
+    notes: adapter.batchedNotes ?? adapter.notes,
+  };
 }
 
 function prepareKeyedOperation(instance, scenario, sample) {
@@ -266,19 +363,30 @@ window.addEventListener("message", async (event) => {
   if (event.origin !== window.location.origin || event.source !== window.parent) return;
   const message = event.data;
   if (!message || typeof message !== "object") return;
-  if (message.type !== "rect:benchmark-run" && message.type !== "rect:keyed-benchmark-run") return;
+  if (
+    message.type !== "rect:benchmark-run" &&
+    message.type !== "rect:batched-benchmark-run" &&
+    message.type !== "rect:keyed-benchmark-run"
+  ) {
+    return;
+  }
 
   try {
-    const result =
-      message.type === "rect:keyed-benchmark-run"
-        ? await runKeyed(message.config)
-        : await run(message.config);
+    let result;
+    let resultType;
+    if (message.type === "rect:keyed-benchmark-run") {
+      result = await runKeyed(message.config);
+      resultType = "rect:keyed-benchmark-result";
+    } else if (message.type === "rect:batched-benchmark-run") {
+      result = await runBatched(message.config);
+      resultType = "rect:batched-benchmark-result";
+    } else {
+      result = await run(message.config);
+      resultType = "rect:benchmark-result";
+    }
     window.parent.postMessage(
       {
-        type:
-          message.type === "rect:keyed-benchmark-run"
-            ? "rect:keyed-benchmark-result"
-            : "rect:benchmark-result",
+        type: resultType,
         runId: message.runId,
         result,
       },

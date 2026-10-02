@@ -71,6 +71,11 @@ test("published browser acceptance uses bounded semantic smoke inputs", () => {
       mountSamples: 15,
       warmupUpdates: 5,
     },
+    batched: {
+      values: 10,
+      updates: 5,
+      warmupUpdates: 5,
+    },
     keyed: {
       items: 10,
       samples: 5,

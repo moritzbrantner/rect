@@ -2,6 +2,8 @@ import { mount, state, type Accessor, type Setter } from "@rect/core";
 import {
   frameworkIds,
   keyedScenarioIds,
+  type BatchedBenchmarkConfig,
+  type BatchedBenchmarkResult,
   type BenchmarkConfig,
   type BenchmarkResult,
   type FrameworkId,
@@ -9,7 +11,11 @@ import {
   type KeyedBenchmarkResult,
   type KeyedScenarioId,
 } from "./benchmark-contract.ts";
-import { runFrameworkBenchmark, runRectKeyedBenchmark } from "./benchmark-client.ts";
+import {
+  runFrameworkBatchedBenchmark,
+  runFrameworkBenchmark,
+  runRectKeyedBenchmark,
+} from "./benchmark-client.ts";
 
 type RowModel = {
   id: FrameworkId;
@@ -28,6 +34,17 @@ type RowModel = {
   setBytes: Setter<string>;
   heap: Accessor<string>;
   setHeap: Setter<string>;
+};
+
+type BatchedRowModel = {
+  id: FrameworkId;
+  label: string;
+  status: Accessor<string>;
+  setStatus: Setter<string>;
+  update: Accessor<string>;
+  setUpdate: Setter<string>;
+  mutations: Accessor<string>;
+  setMutations: Setter<string>;
 };
 
 type KeyedRowModel = {
@@ -85,6 +102,22 @@ function makeRow(id: FrameworkId): RowModel {
   };
 }
 
+function makeBatchedRow(id: FrameworkId): BatchedRowModel {
+  const [status, setStatus] = state("Ready");
+  const [updateValue, setUpdate] = state("—");
+  const [mutations, setMutations] = state("—");
+  return {
+    id,
+    label: labels[id],
+    status,
+    setStatus,
+    update: updateValue,
+    setUpdate,
+    mutations,
+    setMutations,
+  };
+}
+
 function makeKeyedRow(id: KeyedScenarioId): KeyedRowModel {
   const [status, setStatus] = state("Ready");
   const [latency, setLatency] = state("—");
@@ -103,6 +136,8 @@ function makeKeyedRow(id: KeyedScenarioId): KeyedRowModel {
 
 const rows = frameworkIds.map(makeRow);
 const rowById = new Map(rows.map((row) => [row.id, row]));
+const batchedRows = frameworkIds.map(makeBatchedRow);
+const batchedRowById = new Map(batchedRows.map((row) => [row.id, row]));
 const keyedRows = keyedScenarioIds.map(makeKeyedRow);
 const keyedRowById = new Map(keyedRows.map((row) => [row.id, row]));
 
@@ -141,6 +176,19 @@ function applyResult(result: BenchmarkResult): void {
   row.setHeap(formatHeap(result.heapDeltaBytes));
 }
 
+function applyBatchedResult(result: BatchedBenchmarkResult): void {
+  const row = batchedRowById.get(result.framework);
+  if (!row) return;
+
+  row.setStatus(result.verified ? "Verified" : "Failed verification");
+  row.setUpdate(
+    `${formatMs(result.updateMs.p50)} / ${formatMs(result.updateMs.p95)} / ${formatMs(result.updateMs.p99)}`,
+  );
+  row.setMutations(
+    `${result.mutationRecords.p50.toFixed(0)} / ${result.mutationRecords.p95.toFixed(0)} / ${result.mutationRecords.p99.toFixed(0)}`,
+  );
+}
+
 function applyKeyedResult(result: KeyedBenchmarkResult): void {
   for (const scenario of result.scenarios) {
     const row = keyedRowById.get(scenario.scenario);
@@ -177,6 +225,19 @@ function resultRow(row: RowModel): Node {
   );
 }
 
+function batchedResultRow(row: BatchedRowModel): Node {
+  return (
+    <tr>
+      <th scope="row">
+        <span className="framework-name">{row.label}</span>
+        <span className="status">{row.status}</span>
+      </th>
+      <td>{row.update}</td>
+      <td>{row.mutations}</td>
+    </tr>
+  );
+}
+
 function keyedResultRow(row: KeyedRowModel): Node {
   return (
     <tr>
@@ -194,6 +255,10 @@ function App(): Node {
   const [count, setCount] = state(0);
   const [progress, setProgress] = state("Ready to benchmark.");
   const [rawOutput, setRawOutput] = state("Run the suite to capture raw evidence.");
+  const [batchedProgress, setBatchedProgress] = state("Ready to benchmark batched values.");
+  const [batchedRawOutput, setBatchedRawOutput] = state(
+    "Run the batched suite to capture raw multi-value evidence.",
+  );
   const [keyedProgress, setKeyedProgress] = state("Ready to benchmark keyed movement.");
   const [keyedRawOutput, setKeyedRawOutput] = state(
     "Run the keyed suite to capture raw movement evidence.",
@@ -202,6 +267,9 @@ function App(): Node {
   let nodesInput: HTMLInputElement | undefined;
   let updatesInput: HTMLInputElement | undefined;
   let runButton: HTMLButtonElement | undefined;
+  let batchedValuesInput: HTMLInputElement | undefined;
+  let batchedUpdatesInput: HTMLInputElement | undefined;
+  let batchedRunButton: HTMLButtonElement | undefined;
   let keyedItemsInput: HTMLInputElement | undefined;
   let keyedSamplesInput: HTMLInputElement | undefined;
   let keyedRunButton: HTMLButtonElement | undefined;
@@ -267,6 +335,60 @@ function App(): Node {
       setRawOutput(JSON.stringify(results, null, 2));
     } finally {
       if (runButton) runButton.disabled = false;
+    }
+  };
+
+  const runBatchedSuite = async (): Promise<void> => {
+    const values = clampInteger(Number(batchedValuesInput?.value ?? 1000), 2, 5000);
+    const updates = clampInteger(Number(batchedUpdatesInput?.value ?? 40), 5, 250);
+    const config: BatchedBenchmarkConfig = {
+      values,
+      updates,
+      warmupUpdates: Math.min(10, updates),
+    };
+
+    if (batchedValuesInput) batchedValuesInput.value = String(values);
+    if (batchedUpdatesInput) batchedUpdatesInput.value = String(updates);
+    if (batchedRunButton) batchedRunButton.disabled = true;
+
+    const results: BatchedBenchmarkResult[] = [];
+    for (const row of batchedRows) {
+      row.setStatus("Queued");
+      row.setUpdate("—");
+      row.setMutations("—");
+    }
+
+    try {
+      for (const [index, framework] of frameworkIds.entries()) {
+        const row = batchedRowById.get(framework);
+        row?.setStatus("Running");
+        setBatchedProgress(`Running ${labels[framework]} (${index + 1}/${frameworkIds.length})…`);
+        try {
+          const result = await runFrameworkBatchedBenchmark(framework, config);
+          results.push(result);
+          applyBatchedResult(result);
+        } catch (error) {
+          row?.setStatus("Error");
+          const message = error instanceof Error ? error.message : String(error);
+          results.push({
+            framework,
+            label: labels[framework],
+            version: "unknown",
+            implementation: "fixture error",
+            config,
+            updateMs: { p50: 0, p95: 0, p99: 0 },
+            mutationRecords: { p50: 0, p95: 0, p99: 0 },
+            verified: false,
+            notes: [message],
+          });
+        }
+      }
+      setBatchedProgress(
+        `Finished ${results.filter((result) => result.verified).length}/${results.length} verified fixtures.`,
+      );
+      setBatchedRawOutput(JSON.stringify(results, null, 2));
+    } finally {
+      if (batchedRunButton) batchedRunButton.disabled = false;
     }
   };
 
@@ -404,6 +526,77 @@ function App(): Node {
         </p>
       </section>
 
+      <section className="shell benchmark-panel" aria-labelledby="batched-benchmark-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Batched browser evidence</p>
+            <h2 id="batched-benchmark-title">Independent values, one logical transaction</h2>
+          </div>
+          <p className="section-note">
+            Each cell owns its own reactive value. The measured operation updates every value inside
+            one framework transaction; latency and mutation observation run in separate passes.
+          </p>
+        </div>
+
+        <div className="controls">
+          <label>
+            Independent values
+            <input
+              ref={(element: unknown) => {
+                if (element instanceof HTMLInputElement) batchedValuesInput = element;
+              }}
+              type="number"
+              min="2"
+              max="5000"
+              value="1000"
+            />
+          </label>
+          <label>
+            Measured batches
+            <input
+              ref={(element: unknown) => {
+                if (element instanceof HTMLInputElement) batchedUpdatesInput = element;
+              }}
+              type="number"
+              min="5"
+              max="250"
+              value="40"
+            />
+          </label>
+          <button
+            ref={(element: unknown) => {
+              if (element instanceof HTMLButtonElement) batchedRunButton = element;
+            }}
+            className="primary"
+            type="button"
+            onClick={runBatchedSuite}
+          >
+            Run batched values
+          </button>
+          <span className="progress" role="status">
+            {batchedProgress}
+          </span>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Implementation</th>
+                <th>Batch update p50 / p95 / p99</th>
+                <th>MutationObserver records p50 / p95 / p99</th>
+              </tr>
+            </thead>
+            <tbody>{batchedRows.map(batchedResultRow)}</tbody>
+          </table>
+        </div>
+        <p className="fine-print">
+          The values are independently owned rather than aliases of one shared accessor. Each
+          measured batch changes every value. Results remain machine-local evidence, not a framework
+          ranking.
+        </p>
+      </section>
+
       <section className="shell benchmark-panel" aria-labelledby="keyed-benchmark-title">
         <div className="section-heading">
           <div>
@@ -489,8 +682,8 @@ function App(): Node {
           <h2>Comparable, not identical</h2>
           <p>
             React is compiled by Bun 1.4&apos;s built-in React Compiler. Preact uses its renderer.
-            Solid uses its signal runtime with a compiler-shaped direct-DOM fixture. Vanilla is the
-            lower-level reference.
+            Solid is compiled with its matching official DOM compiler. Vanilla is the lower-level
+            reference.
           </p>
         </article>
         <article className="card">
@@ -512,6 +705,16 @@ function App(): Node {
           </div>
         </div>
         <pre>{rawOutput}</pre>
+      </section>
+
+      <section className="shell evidence-panel" aria-labelledby="batched-evidence-title">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Raw batched run</p>
+            <h2 id="batched-evidence-title">Multi-value evidence, not a scheduler claim</h2>
+          </div>
+        </div>
+        <pre>{batchedRawOutput}</pre>
       </section>
 
       <section className="shell evidence-panel" aria-labelledby="keyed-evidence-title">
