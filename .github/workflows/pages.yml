@@ -13,17 +13,7 @@ on:
       - "bun.lock"
       - "tsconfig.json"
       - ".github/workflows/pages.yml"
-  pull_request:
-    paths:
-      - "benchmarks/comparison/**"
-      - "examples/performance-lab/**"
-      - "src/**"
-      - "scripts/build-pages.mjs"
-      - "scripts/verify-comparison-boundary.mjs"
-      - "package.json"
-      - "bun.lock"
-      - "tsconfig.json"
-      - ".github/workflows/pages.yml"
+  workflow_call:
   workflow_dispatch:
 
 permissions:

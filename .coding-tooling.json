@@ -19,6 +19,6 @@
   "optionalCapabilities": ["test:integration", "benchmark:smoke"],
   "merge": {
     "authority": "hosted",
-    "requiredChecks": ["validate"]
+    "requiredChecks": ["merge-ready"]
   }
 }
