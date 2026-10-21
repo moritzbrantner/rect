@@ -21,7 +21,7 @@ export const comparisonFixtureIds = [
 
 export const comparisonBuildContract = {
   schemaVersion: 1,
-  bunVersion: "1.4.0",
+  bunVersion: "1.4.3",
   target: "browser",
   format: "esm",
   minify: true,
