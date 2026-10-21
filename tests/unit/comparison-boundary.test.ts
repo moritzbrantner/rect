@@ -45,7 +45,7 @@ test("browser fixture runner has no comparison-runtime import map", () => {
 test("comparison build contract is explicit and complete", () => {
   expect(comparisonBuildContract).toEqual({
     schemaVersion: 1,
-    bunVersion: "1.4.0",
+    bunVersion: "1.4.3",
     target: "browser",
     format: "esm",
     minify: true,

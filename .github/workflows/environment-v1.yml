@@ -21,4 +21,4 @@ jobs:
       contents: read
     uses: moritzbrantner/reusable-workflows/.github/workflows/environment-v1-canary.yml@112330e4e04b6b990323705e4e3ee768c0742917
     with:
-      bun_version: 1.4.0
+      bun_version: 1.4.3
