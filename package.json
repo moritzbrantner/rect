@@ -29,9 +29,9 @@
     "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test:unit && bun run build && bun run build:pages && bun run verify:comparison"
   },
   "devDependencies": {
-    "oxfmt": "0.66.0",
-    "oxlint": "1.81.0",
-    "oxlint-tsgolint": "7.0.2001",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
     "typescript": "7.0.2"
   },
   "packageManager": "bun@1.4.3"

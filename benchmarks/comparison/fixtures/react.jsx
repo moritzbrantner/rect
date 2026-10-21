@@ -49,8 +49,8 @@ const BatchedView = forwardRef(function BatchedView({ valueCount }, ref) {
 
 export default {
   label: "React + Compiler",
-  version: "19.2.8",
-  implementation: "React 19.2.8 · Bun 1.4 React Compiler · flushSync updates",
+  version: "19.3.1",
+  implementation: "React 19.3.1 · Bun 1.4 React Compiler · flushSync updates",
   assetUrl: import.meta.url,
   notes: [
     "This source is passed through Bun 1.4's built-in React Compiler during the Pages build.",

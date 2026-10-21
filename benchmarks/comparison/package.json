@@ -8,14 +8,14 @@
   },
   "dependencies": {
     "preact": "10.29.8",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "solid-js": "1.9.15"
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "solid-js": "1.9.17"
   },
   "devDependencies": {
     "@babel/core": "7.29.7",
-    "babel-preset-solid": "1.9.15",
-    "playwright": "1.63.0"
+    "babel-preset-solid": "1.9.16",
+    "playwright": "1.64.1"
   },
   "packageManager": "bun@1.4.3"
 }
