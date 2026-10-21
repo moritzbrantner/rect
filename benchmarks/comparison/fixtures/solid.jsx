@@ -3,8 +3,8 @@ import { render } from "solid-js/web";
 
 export default {
   label: "Solid",
-  version: "1.9.15",
-  implementation: "Solid 1.9.15 · babel-preset-solid 1.9.15 DOM output",
+  version: "1.9.17",
+  implementation: "Solid 1.9.17 · babel-preset-solid 1.9.16 DOM output",
   assetUrl: import.meta.url,
   notes: [
     "The fixture is authored as Solid JSX and compiled with the matching official babel-preset-solid DOM transform before Bun bundles it.",

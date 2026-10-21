@@ -1,13 +1,13 @@
 export const comparisonDependencyVersions = {
   preact: "10.29.8",
-  react: "19.2.8",
-  "react-dom": "19.2.8",
-  "solid-js": "1.9.15",
+  react: "19.3.1",
+  "react-dom": "19.3.1",
+  "solid-js": "1.9.17",
 } as const;
 
 export const comparisonCompilerVersions = {
   "@babel/core": "7.29.7",
-  "babel-preset-solid": "1.9.15",
+  "babel-preset-solid": "1.9.16",
 } as const;
 
 export const comparisonFixtureIds = [
@@ -29,7 +29,7 @@ export const comparisonBuildContract = {
 } as const;
 
 export const comparisonBrowserContract = {
-  playwrightVersion: "1.63.0",
+  playwrightVersion: "1.64.1",
   browser: "chromium",
   fanout: {
     nodes: 10,

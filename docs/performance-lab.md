@@ -42,9 +42,9 @@ The fixture records p50/p95/p99 operation latency and MutationObserver record co
 - **Rect** uses the reference runtime with one text node per fan-out cell. Repeated uses of the same accessor share one tracked fan-out effect and one text conversion per update. No Rect compiler exists yet.
 - **Rect keyed** is built as a separate `rect-keyed.js` entrypoint around Rect's tested `keyed()` region. Keyed runtime and workload helpers therefore do not contribute to the existing fan-out fixture's application-bundle byte measurement.
 - **Vanilla DOM** is the low-level imperative reference for the fan-out comparison.
-- **React 19.2.8** is built with Bun 1.4's built-in React Compiler and measured with synchronous `flushSync` updates for the fan-out comparison.
+- **React 19.3.1** is built with Bun 1.4's built-in React Compiler and measured with synchronous `flushSync` updates for the fan-out comparison.
 - **Preact 10.29.8** uses the real renderer with its debounce scheduler made synchronous for the fan-out measurement boundary.
-- **Solid 1.9.15** uses Solid-owned signals/render lifetime and direct DOM effects in the same fine-grained shape its compiler targets. It is intentionally described as compiler-shaped rather than claiming an official Solid compiler pass.
+- **Solid 1.9.17** uses Solid-owned signals/render lifetime and direct DOM effects in the same fine-grained shape its compiler targets. It is intentionally described as compiler-shaped rather than claiming an official Solid compiler pass.
 
 ## Frozen comparison boundary
 
