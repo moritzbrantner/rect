@@ -55,7 +55,7 @@ jobs:
         with:
           operation: run
           tier: fast
-          bun-version: 1.4.3
+          bun-version: latest
           install-mode: none
 
   validate-environment-v1:
