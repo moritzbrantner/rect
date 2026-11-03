@@ -4,7 +4,8 @@
   "target": {
     "type": "command",
     "program": "bun",
-    "args": ["run", "benchmark:state"]
+    "args": ["run", "benchmark:state"],
+    "working_directory": "../.."
   },
   "run": {
     "warmup_iterations": 1,

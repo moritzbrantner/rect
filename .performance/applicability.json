@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "components": [
+    {
+      "component": ".",
+      "roles": ["web", "distributable"],
+      "scenarios": [
+        {
+          "family": "runtime",
+          "capability": "profile:runtime",
+          "path": "profiles/runtime-profiler/state.json",
+          "tools": ["bash", "bun", "runtime-profiler"],
+          "platforms": []
+        },
+        {
+          "family": "hotspots",
+          "capability": "profile:hotspots",
+          "path": "profiles/runtime-profiler/state-hotspots.json",
+          "tools": ["bash", "bun", "runtime-profiler", "perf"],
+          "platforms": ["linux"]
+        }
+      ]
+    }
+  ]
+}

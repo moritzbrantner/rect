@@ -16,7 +16,27 @@
     "performance": ["benchmark:smoke"]
   },
   "requiredCapabilities": ["format:check", "lint", "typecheck", "build", "test:unit"],
-  "optionalCapabilities": ["test:integration", "benchmark:smoke"],
+  "optionalCapabilities": [
+    "test:integration",
+    "benchmark:smoke",
+    "profile:runtime",
+    "profile:hotspots"
+  ],
+  "capabilityCommands": {
+    ".": {
+      "profile:runtime": [
+        "bash",
+        "scripts/runtime-profile.sh",
+        ".artifacts/runtime-profiler/rect-state"
+      ],
+      "profile:hotspots": [
+        "bash",
+        "scripts/runtime-profile.sh",
+        ".artifacts/runtime-profiler/rect-state-hotspots",
+        "profiles/runtime-profiler/state-hotspots.json"
+      ]
+    }
+  },
   "merge": {
     "authority": "hosted",
     "requiredChecks": ["merge-ready"]

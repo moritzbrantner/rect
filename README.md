@@ -184,6 +184,30 @@ Run `runtime-profiler detect` or `runtime-profiler plan --scenario profiles/runt
 scripts/moonlight-compare.sh ../rect-baseline .
 ```
 
+For a complete opt-in runtime evidence pilot, run the same committed process
+scenario from two clean checkouts (for example, two Git worktrees) on the **same
+machine**, then let Moonlight validate and evaluate the immutable bundles:
+
+```sh
+scripts/runtime-profile-compare.sh ../rect-baseline . \
+  .artifacts/runtime-profiler/comparison-001
+```
+
+The command preserves `reference/`, `candidate/`, source revision files and
+`evaluation.json` in its fresh output directory. It refuses dirty checkouts,
+different scenario bytes and existing output paths. `MOONLIGHT_RUNTIME_PROFILE_BIN`
+and `RUNTIME_PROFILER_BIN` can point to installed binaries; otherwise the script
+uses binaries on `PATH` or sibling Rust checkouts. Moonlight's default 90-point,
+five-sample policy is an **exploratory evaluator verdict**, not a CI merge gate.
+Exit code 2 means failed policy, 3 means inconclusive; neither is a fabricated
+success. Use an explicit `hotspots` fourth argument only on a Linux host whose
+`native-perf` collector is available.
+
+`coding-tooling performance applicability --root . --json` discovers these
+opt-in `profile:runtime` and `profile:hotspots` capabilities through the owned
+scenario paths. Its `supported` state means *wiring and prerequisites exist*,
+not that a benchmark passed; missing local tools are reported as unavailable.
+
 See [`docs/architecture.md`](docs/architecture.md) and [`ROADMAP.md`](ROADMAP.md).
 
 ## Status
