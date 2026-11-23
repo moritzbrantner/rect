@@ -142,26 +142,38 @@ const keyedRows = keyedScenarioIds.map(makeKeyedRow);
 const keyedRowById = new Map(keyedRows.map((row) => [row.id, row]));
 
 function formatMs(value: number): string {
-  if (value < 0.01) {return `${(value * 1000).toFixed(1)} µs`;}
-  if (value < 1) {return `${value.toFixed(3)} ms`;}
+  if (value < 0.01) {
+    return `${(value * 1000).toFixed(1)} µs`;
+  }
+  if (value < 1) {
+    return `${value.toFixed(3)} ms`;
+  }
   return `${value.toFixed(2)} ms`;
 }
 
 function formatBytes(value: number | null): string {
-  if (value === null) {return "n/a";}
-  if (value < 1024) {return `${value} B`;}
+  if (value === null) {
+    return "n/a";
+  }
+  if (value < 1024) {
+    return `${value} B`;
+  }
   return `${(value / 1024).toFixed(1)} KiB`;
 }
 
 function formatHeap(value: number | null): string {
-  if (value === null) {return "n/a";}
+  if (value === null) {
+    return "n/a";
+  }
   const sign = value >= 0 ? "+" : "−";
   return `${sign}${formatBytes(Math.abs(value))}`;
 }
 
 function applyResult(result: BenchmarkResult): void {
   const row = rowById.get(result.framework);
-  if (!row) {return;}
+  if (!row) {
+    return;
+  }
 
   row.setStatus(result.verified ? "Verified" : "Failed verification");
   row.setColdMount(formatMs(result.firstMountMs));
@@ -178,7 +190,9 @@ function applyResult(result: BenchmarkResult): void {
 
 function applyBatchedResult(result: BatchedBenchmarkResult): void {
   const row = batchedRowById.get(result.framework);
-  if (!row) {return;}
+  if (!row) {
+    return;
+  }
 
   row.setStatus(result.verified ? "Verified" : "Failed verification");
   row.setUpdate(
@@ -192,7 +206,9 @@ function applyBatchedResult(result: BatchedBenchmarkResult): void {
 function applyKeyedResult(result: KeyedBenchmarkResult): void {
   for (const scenario of result.scenarios) {
     const row = keyedRowById.get(scenario.scenario);
-    if (!row) {continue;}
+    if (!row) {
+      continue;
+    }
 
     row.setStatus(scenario.verified ? "Verified" : "Failed verification");
     row.setLatency(
@@ -284,9 +300,15 @@ function App(): Node {
       warmupUpdates: Math.min(10, updates),
     };
 
-    if (nodesInput) {nodesInput.value = String(nodes);}
-    if (updatesInput) {updatesInput.value = String(updates);}
-    if (runButton) {runButton.disabled = true;}
+    if (nodesInput) {
+      nodesInput.value = String(nodes);
+    }
+    if (updatesInput) {
+      updatesInput.value = String(updates);
+    }
+    if (runButton) {
+      runButton.disabled = true;
+    }
 
     const results: BenchmarkResult[] = [];
     for (const row of rows) {
@@ -334,7 +356,9 @@ function App(): Node {
       );
       setRawOutput(JSON.stringify(results, null, 2));
     } finally {
-      if (runButton) {runButton.disabled = false;}
+      if (runButton) {
+        runButton.disabled = false;
+      }
     }
   };
 
@@ -347,9 +371,15 @@ function App(): Node {
       warmupUpdates: Math.min(10, updates),
     };
 
-    if (batchedValuesInput) {batchedValuesInput.value = String(values);}
-    if (batchedUpdatesInput) {batchedUpdatesInput.value = String(updates);}
-    if (batchedRunButton) {batchedRunButton.disabled = true;}
+    if (batchedValuesInput) {
+      batchedValuesInput.value = String(values);
+    }
+    if (batchedUpdatesInput) {
+      batchedUpdatesInput.value = String(updates);
+    }
+    if (batchedRunButton) {
+      batchedRunButton.disabled = true;
+    }
 
     const results: BatchedBenchmarkResult[] = [];
     for (const row of batchedRows) {
@@ -388,7 +418,9 @@ function App(): Node {
       );
       setBatchedRawOutput(JSON.stringify(results, null, 2));
     } finally {
-      if (batchedRunButton) {batchedRunButton.disabled = false;}
+      if (batchedRunButton) {
+        batchedRunButton.disabled = false;
+      }
     }
   };
 
@@ -401,9 +433,15 @@ function App(): Node {
       warmupSamples: Math.min(5, samples),
     };
 
-    if (keyedItemsInput) {keyedItemsInput.value = String(items);}
-    if (keyedSamplesInput) {keyedSamplesInput.value = String(samples);}
-    if (keyedRunButton) {keyedRunButton.disabled = true;}
+    if (keyedItemsInput) {
+      keyedItemsInput.value = String(items);
+    }
+    if (keyedSamplesInput) {
+      keyedSamplesInput.value = String(samples);
+    }
+    if (keyedRunButton) {
+      keyedRunButton.disabled = true;
+    }
 
     for (const row of keyedRows) {
       row.setStatus("Queued");
@@ -412,7 +450,9 @@ function App(): Node {
     }
 
     try {
-      for (const row of keyedRows) {row.setStatus("Running");}
+      for (const row of keyedRows) {
+        row.setStatus("Running");
+      }
       setKeyedProgress("Running Rect keyed movement scenarios…");
       const result = await runRectKeyedBenchmark(config);
       applyKeyedResult(result);
@@ -423,12 +463,16 @@ function App(): Node {
       );
       setKeyedRawOutput(JSON.stringify(result, null, 2));
     } catch (error) {
-      for (const row of keyedRows) {row.setStatus("Error");}
+      for (const row of keyedRows) {
+        row.setStatus("Error");
+      }
       const message = error instanceof Error ? error.message : String(error);
       setKeyedProgress(`Keyed fixture failed: ${message}`);
       setKeyedRawOutput(JSON.stringify({ verified: false, message }, null, 2));
     } finally {
-      if (keyedRunButton) {keyedRunButton.disabled = false;}
+      if (keyedRunButton) {
+        keyedRunButton.disabled = false;
+      }
     }
   };
 
@@ -468,7 +512,9 @@ function App(): Node {
             Reactive text nodes
             <input
               ref={(element: unknown) => {
-                if (element instanceof HTMLInputElement) {nodesInput = element;}
+                if (element instanceof HTMLInputElement) {
+                  nodesInput = element;
+                }
               }}
               type="number"
               min="10"
@@ -480,7 +526,9 @@ function App(): Node {
             Measured updates
             <input
               ref={(element: unknown) => {
-                if (element instanceof HTMLInputElement) {updatesInput = element;}
+                if (element instanceof HTMLInputElement) {
+                  updatesInput = element;
+                }
               }}
               type="number"
               min="5"
@@ -490,7 +538,9 @@ function App(): Node {
           </label>
           <button
             ref={(element: unknown) => {
-              if (element instanceof HTMLButtonElement) {runButton = element;}
+              if (element instanceof HTMLButtonElement) {
+                runButton = element;
+              }
             }}
             className="primary"
             type="button"
@@ -543,7 +593,9 @@ function App(): Node {
             Independent values
             <input
               ref={(element: unknown) => {
-                if (element instanceof HTMLInputElement) {batchedValuesInput = element;}
+                if (element instanceof HTMLInputElement) {
+                  batchedValuesInput = element;
+                }
               }}
               type="number"
               min="2"
@@ -555,7 +607,9 @@ function App(): Node {
             Measured batches
             <input
               ref={(element: unknown) => {
-                if (element instanceof HTMLInputElement) {batchedUpdatesInput = element;}
+                if (element instanceof HTMLInputElement) {
+                  batchedUpdatesInput = element;
+                }
               }}
               type="number"
               min="5"
@@ -565,7 +619,9 @@ function App(): Node {
           </label>
           <button
             ref={(element: unknown) => {
-              if (element instanceof HTMLButtonElement) {batchedRunButton = element;}
+              if (element instanceof HTMLButtonElement) {
+                batchedRunButton = element;
+              }
             }}
             className="primary"
             type="button"
@@ -614,7 +670,9 @@ function App(): Node {
             Keyed items
             <input
               ref={(element: unknown) => {
-                if (element instanceof HTMLInputElement) {keyedItemsInput = element;}
+                if (element instanceof HTMLInputElement) {
+                  keyedItemsInput = element;
+                }
               }}
               type="number"
               min="10"
@@ -626,7 +684,9 @@ function App(): Node {
             Samples per scenario
             <input
               ref={(element: unknown) => {
-                if (element instanceof HTMLInputElement) {keyedSamplesInput = element;}
+                if (element instanceof HTMLInputElement) {
+                  keyedSamplesInput = element;
+                }
               }}
               type="number"
               min="5"
@@ -636,7 +696,9 @@ function App(): Node {
           </label>
           <button
             ref={(element: unknown) => {
-              if (element instanceof HTMLButtonElement) {keyedRunButton = element;}
+              if (element instanceof HTMLButtonElement) {
+                keyedRunButton = element;
+              }
             }}
             className="primary"
             type="button"
@@ -731,5 +793,7 @@ function App(): Node {
 }
 
 const root = document.querySelector("#app");
-if (!(root instanceof HTMLElement)) {throw new Error("Missing #app mount point.");}
+if (!(root instanceof HTMLElement)) {
+  throw new Error("Missing #app mount point.");
+}
 mount(<App />, root);

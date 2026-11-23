@@ -85,7 +85,9 @@ function createRecord<T, K extends Key>(
         hasError = true;
       }
     }
-    if (hasError) {throw firstError;}
+    if (hasError) {
+      throw firstError;
+    }
   };
 
   return {
@@ -102,7 +104,9 @@ function createRecord<T, K extends Key>(
 }
 
 function moveIntoCarrier<T, K extends Key>(record: KeyedRecord<T, K>): void {
-  if (record.start.parentNode === record.carrier) {return;}
+  if (record.start.parentNode === record.carrier) {
+    return;
+  }
 
   let node: Node | null = record.start;
   let foundEnd = false;
@@ -131,7 +135,9 @@ function moveBefore<T, K extends Key>(
   record: KeyedRecord<T, K>,
   reference: Node,
 ): void {
-  if (record.end.nextSibling === reference) {return;}
+  if (record.end.nextSibling === reference) {
+    return;
+  }
   moveIntoCarrier(record);
   parent.insertBefore(record.carrier, reference);
 }
@@ -174,23 +180,31 @@ function createRegion<T, K extends Key>(
 
     try {
       for (const descriptor of descriptors) {
-        if (recordsByKey.has(descriptor.key)) {continue;}
+        if (recordsByKey.has(descriptor.key)) {
+          continue;
+        }
         prepared.set(descriptor.key, createRecord(owner, descriptor, render));
       }
     } catch (error) {
-      for (const record of prepared.values()) {disposeRecord(record);}
+      for (const record of prepared.values()) {
+        disposeRecord(record);
+      }
       throw error;
     }
 
     const parent = end.parentNode;
     if (!parent) {
-      for (const record of prepared.values()) {disposeRecord(record);}
+      for (const record of prepared.values()) {
+        disposeRecord(record);
+      }
       throw new Error("Rect keyed collection lost its DOM boundary.");
     }
 
     const nextKeys = new Set(descriptors.map((descriptor) => descriptor.key));
     for (const record of orderedRecords) {
-      if (!nextKeys.has(record.key)) {disposeRecord(record);}
+      if (!nextKeys.has(record.key)) {
+        disposeRecord(record);
+      }
     }
 
     const nextRecords: KeyedRecord<T, K>[] = [];
@@ -245,7 +259,9 @@ function createRegion<T, K extends Key>(
         }
       }
     }
-    if (hasError) {throw firstError;}
+    if (hasError) {
+      throw firstError;
+    }
   });
 
   return fragment;
