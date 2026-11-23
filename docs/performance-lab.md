@@ -55,7 +55,7 @@ Every fan-out fixture is built locally with the same Bun 1.4 browser target, ESM
 The Pages build emits `fixtures/manifest.json` with:
 
 - the source revision represented by the build;
-- the pinned Bun/build policy;
+- the Bun version that built the fixtures (latest stable, not pinned) and the build policy;
 - the comparison workspace and lockfile boundary;
 - exact comparison package versions;
 - each emitted fixture asset and its byte size.
