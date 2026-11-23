@@ -1,4 +1,10 @@
 import { mount, state, type Accessor, type Setter } from "@rect/core";
+
+import {
+  runFrameworkBatchedBenchmark,
+  runFrameworkBenchmark,
+  runRectKeyedBenchmark,
+} from "./benchmark-client.ts";
 import {
   frameworkIds,
   keyedScenarioIds,
@@ -11,11 +17,6 @@ import {
   type KeyedBenchmarkResult,
   type KeyedScenarioId,
 } from "./benchmark-contract.ts";
-import {
-  runFrameworkBatchedBenchmark,
-  runFrameworkBenchmark,
-  runRectKeyedBenchmark,
-} from "./benchmark-client.ts";
 
 type RowModel = {
   id: FrameworkId;
