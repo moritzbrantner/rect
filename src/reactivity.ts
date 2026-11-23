@@ -40,7 +40,9 @@ function cleanupEffect(effect: ReactiveEffect): void {
 }
 
 function queueEffect(effect: ReactiveEffect): void {
-  if (!effect.active || activeFlushQueue?.has(effect)) return;
+  if (!effect.active || activeFlushQueue?.has(effect)) {
+    return;
+  }
   pendingEffects.add(effect);
 }
 
@@ -52,7 +54,9 @@ function notifySubscribers(subscribers: SubscriberSet): void {
 }
 
 function flushPendingEffects(): void {
-  if (flushingEffects || batchDepth > 0) return;
+  if (flushingEffects || batchDepth > 0) {
+    return;
+  }
 
   flushingEffects = true;
   let firstError: unknown;
@@ -80,7 +84,9 @@ function flushPendingEffects(): void {
     flushingEffects = false;
   }
 
-  if (hasError) throw firstError;
+  if (hasError) {
+    throw firstError;
+  }
 }
 
 export function createOwner(parent: ReactiveOwner | undefined = activeOwner): ReactiveOwner {
@@ -91,7 +97,9 @@ export function createOwner(parent: ReactiveOwner | undefined = activeOwner): Re
     cleanups: new Set(),
     contexts: new Map(),
   };
-  if (parent?.active) parent.children.add(owner);
+  if (parent?.active) {
+    parent.children.add(owner);
+  }
   return owner;
 }
 
@@ -116,7 +124,9 @@ export function runWithOwner<T>(owner: ReactiveOwner | undefined, run: () => T):
 }
 
 export function disposeOwner(owner: ReactiveOwner): void {
-  if (!owner.active) return;
+  if (!owner.active) {
+    return;
+  }
   owner.active = false;
 
   let firstError: unknown;
@@ -146,7 +156,9 @@ export function disposeOwner(owner: ReactiveOwner): void {
   owner.cleanups.clear();
   owner.parent?.children.delete(owner);
 
-  if (hasError) throw firstError;
+  if (hasError) {
+    throw firstError;
+  }
 }
 
 export function onCleanup(cleanup: Disposer): void {
@@ -162,7 +174,9 @@ export function effect(run: () => void): Disposer {
     active: true,
     dependencies: new Set(),
     execute: () => {
-      if (!reactiveEffect.active) return;
+      if (!reactiveEffect.active) {
+        return;
+      }
 
       cleanupEffect(reactiveEffect);
       const previous = activeEffect;
@@ -176,7 +190,9 @@ export function effect(run: () => void): Disposer {
   };
 
   const dispose = () => {
-    if (!reactiveEffect.active) return;
+    if (!reactiveEffect.active) {
+      return;
+    }
     reactiveEffect.active = false;
     pendingEffects.delete(reactiveEffect);
     cleanupEffect(reactiveEffect);
@@ -210,7 +226,9 @@ export function state<T>(initial: T): readonly [Accessor<T>, Setter<T>] {
   const write: Setter<T> = (update) => {
     const next = typeof update === "function" ? (update as (previous: T) => T)(value) : update;
 
-    if (Object.is(value, next)) return value;
+    if (Object.is(value, next)) {
+      return value;
+    }
 
     value = next;
     notifySubscribers(subscribers);
@@ -236,7 +254,9 @@ export function derived<T>(compute: () => T): Accessor<T> {
 
   effect(() => {
     const next = compute();
-    if (initialized && Object.is(value, next)) return;
+    if (initialized && Object.is(value, next)) {
+      return;
+    }
 
     value = next;
     if (!initialized) {
@@ -255,7 +275,9 @@ export function batch<T>(run: () => T): T {
     return run();
   } finally {
     batchDepth -= 1;
-    if (batchDepth === 0) flushPendingEffects();
+    if (batchDepth === 0) {
+      flushPendingEffects();
+    }
   }
 }
 
@@ -301,7 +323,9 @@ export function consume<T>(context: Context<T>): T {
     owner = owner.parent;
   }
 
-  if (context.hasDefault) return context.defaultValue as T;
+  if (context.hasDefault) {
+    return context.defaultValue as T;
+  }
   throw new Error("consume() could not find a provided Rect context value.");
 }
 

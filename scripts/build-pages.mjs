@@ -22,12 +22,8 @@ const comparisonPackage = await Bun.file(
 ).json();
 
 function verifyDeclaredBoundary() {
-  const expectedPackageManager = `bun@${comparisonBuildContract.bunVersion}`;
-  if (rootPackage.packageManager !== expectedPackageManager) {
-    throw new Error(`Root package manager must be ${expectedPackageManager}.`);
-  }
-  if (comparisonPackage.packageManager !== expectedPackageManager) {
-    throw new Error(`Comparison package manager must be ${expectedPackageManager}.`);
+  if (rootPackage.packageManager || comparisonPackage.packageManager) {
+    throw new Error("Bun is not pinned: package.json files must not declare packageManager.");
   }
 
   for (const [name, version] of Object.entries(comparisonDependencyVersions)) {
@@ -55,7 +51,9 @@ function readRevision(ref) {
     stdout: "pipe",
     stderr: "pipe",
   });
-  if (result.exitCode !== 0) return null;
+  if (result.exitCode !== 0) {
+    return null;
+  }
   const revision = new TextDecoder().decode(result.stdout).trim();
   return revision.length > 0 ? revision : null;
 }
@@ -77,7 +75,9 @@ async function build(config) {
   });
 
   if (!result.success) {
-    for (const log of result.logs) console.error(log);
+    for (const log of result.logs) {
+      console.error(log);
+    }
     throw new Error("GitHub Pages build failed.");
   }
   return result;
@@ -203,7 +203,7 @@ await Bun.write(
       schemaVersion: comparisonBuildContract.schemaVersion,
       sourceRevision: revision,
       toolchain: {
-        bun: comparisonBuildContract.bunVersion,
+        bun: Bun.version,
         target: comparisonBuildContract.target,
         format: comparisonBuildContract.format,
         minify: comparisonBuildContract.minify,

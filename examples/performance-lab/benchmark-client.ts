@@ -26,7 +26,9 @@ function isFrameworkId(value: string | null): value is FrameworkId {
 }
 
 function isFixtureMessage(value: unknown): value is FixtureMessage {
-  if (!value || typeof value !== "object" || !("type" in value)) return false;
+  if (!value || typeof value !== "object" || !("type" in value)) {
+    return false;
+  }
   const type = Reflect.get(value, "type");
   return (
     type === "rect:benchmark-ready" ||
@@ -84,7 +86,9 @@ async function runFixture<Result extends FixtureRunResult>(
 
       if (event.data.type === "rect:benchmark-ready") {
         const message = event.data as ReadyMessage;
-        if (ready || message.framework !== framework || !isFrameworkId(message.framework)) return;
+        if (ready || message.framework !== framework || !isFrameworkId(message.framework)) {
+          return;
+        }
         ready = true;
         iframe.contentWindow?.postMessage(
           { type: requestType, runId, config },
@@ -95,15 +99,21 @@ async function runFixture<Result extends FixtureRunResult>(
 
       if (event.data.type === resultType) {
         const message = event.data as ResultFixtureMessage;
-        if (message.runId !== runId) return;
+        if (message.runId !== runId) {
+          return;
+        }
         finish();
         resolve(message.result as Result);
         return;
       }
 
-      if (event.data.type !== "rect:benchmark-error") return;
+      if (event.data.type !== "rect:benchmark-error") {
+        return;
+      }
       const message = event.data as ErrorMessage;
-      if (message.runId === runId) fail(message.message);
+      if (message.runId === runId) {
+        fail(message.message);
+      }
     };
 
     const timeout = window.setTimeout(

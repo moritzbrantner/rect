@@ -35,8 +35,8 @@ if (
 ) {
   fail("manifest does not contain a full source commit revision");
 }
-if (manifest.toolchain?.bun !== comparisonBuildContract.bunVersion) {
-  fail("manifest does not record the pinned Bun version");
+if (typeof manifest.toolchain?.bun !== "string" || !/^\d+\.\d+\.\d+/.test(manifest.toolchain.bun)) {
+  fail("manifest does not record the Bun version that built the fixtures");
 }
 if (manifest.toolchain?.packages !== "bundle") {
   fail("fixture packages are not declared as bundled");
@@ -45,12 +45,11 @@ if (manifest.dependencyBoundary?.externalRuntimeImports !== false) {
   fail("manifest permits external runtime imports");
 }
 
-const expectedPackageManager = `bun@${comparisonBuildContract.bunVersion}`;
-if (rootPackage.packageManager !== expectedPackageManager) {
-  fail(`root packageManager is not ${expectedPackageManager}`);
+if (rootPackage.packageManager) {
+  fail("root package.json pins Bun through packageManager");
 }
-if (comparisonPackage.packageManager !== expectedPackageManager) {
-  fail(`comparison packageManager is not ${expectedPackageManager}`);
+if (comparisonPackage.packageManager) {
+  fail("comparison package.json pins Bun through packageManager");
 }
 
 for (const [name, version] of Object.entries(comparisonDependencyVersions)) {
@@ -102,7 +101,9 @@ for (const fixture of manifest.fixtures) {
   }
 
   const source = await Bun.file(assetPath).text();
-  if (source.includes("esm.sh")) fail(`${fixture.id} still references esm.sh`);
+  if (source.includes("esm.sh")) {
+    fail(`${fixture.id} still references esm.sh`);
+  }
   if (bareRuntimeImport.test(source)) {
     fail(`${fixture.id} still contains a bare comparison-runtime import`);
   }

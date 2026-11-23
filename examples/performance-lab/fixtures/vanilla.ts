@@ -22,7 +22,9 @@ export default {
     return {
       update(nextValue: number) {
         const text = String(nextValue);
-        for (const node of textNodes) node.data = text;
+        for (const node of textNodes) {
+          node.data = text;
+        }
       },
       readFirst() {
         return textNodes[0]?.data ?? "";
@@ -55,7 +57,9 @@ export default {
       update(base: number) {
         for (let index = 0; index < textNodes.length; index += 1) {
           const text = textNodes[index];
-          if (text) text.data = String(base + index);
+          if (text) {
+            text.data = String(base + index);
+          }
         }
       },
       readValues() {

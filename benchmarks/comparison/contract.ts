@@ -19,9 +19,10 @@ export const comparisonFixtureIds = [
   "solid",
 ] as const;
 
+// Fixtures build with the latest stable Bun (BUN-001); the manifest records the
+// Bun version that actually built them instead of a pinned one.
 export const comparisonBuildContract = {
   schemaVersion: 1,
-  bunVersion: "1.4.3",
   target: "browser",
   format: "esm",
   minify: true,

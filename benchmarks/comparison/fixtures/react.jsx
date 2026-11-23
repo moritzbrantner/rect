@@ -60,7 +60,9 @@ export default {
     const root = createRoot(target);
     const controller = createRef();
     flushSync(() => root.render(<BenchmarkView ref={controller} nodeCount={nodeCount} />));
-    if (!controller.current) throw new Error("React benchmark controller did not mount.");
+    if (!controller.current) {
+      throw new Error("React benchmark controller did not mount.");
+    }
 
     return {
       update(nextValue) {
@@ -85,7 +87,9 @@ export default {
     const root = createRoot(target);
     const controller = createRef();
     flushSync(() => root.render(<BatchedView ref={controller} valueCount={valueCount} />));
-    if (!controller.current) throw new Error("React batched benchmark controller did not mount.");
+    if (!controller.current) {
+      throw new Error("React batched benchmark controller did not mount.");
+    }
 
     return {
       update(base) {

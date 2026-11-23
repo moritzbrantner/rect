@@ -2,14 +2,20 @@ const framework = new URLSearchParams(window.location.search).get("framework");
 const validFrameworks = new Set(["rect", "vanilla", "react", "preact", "solid"]);
 const target = document.querySelector("#fixture");
 
-if (!framework || !validFrameworks.has(framework)) throw new Error("Unknown benchmark framework.");
-if (!(target instanceof HTMLElement)) throw new Error("Missing benchmark fixture root.");
+if (!framework || !validFrameworks.has(framework)) {
+  throw new Error("Unknown benchmark framework.");
+}
+if (!(target instanceof HTMLElement)) {
+  throw new Error("Missing benchmark fixture root.");
+}
 
 const adapterModule = await import(`./assets/${framework}.js`);
 const adapter = adapterModule.default;
 
 function percentile(values, quantile) {
-  if (values.length === 0) return 0;
+  if (values.length === 0) {
+    return 0;
+  }
   const sorted = [...values].sort((left, right) => left - right);
   const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * quantile) - 1));
   return sorted[index];
@@ -38,9 +44,13 @@ function runtimeTransferBytes() {
     } catch {
       continue;
     }
-    if (url.hostname !== "esm.sh") continue;
+    if (url.hostname !== "esm.sh") {
+      continue;
+    }
     const bytes = entry.encodedBodySize || entry.transferSize || 0;
-    if (bytes > 0) measurable = true;
+    if (bytes > 0) {
+      measurable = true;
+    }
     total += bytes;
   }
   return measurable ? total : null;
@@ -49,7 +59,9 @@ function runtimeTransferBytes() {
 async function appBundleBytes() {
   try {
     const response = await fetch(adapter.assetUrl, { cache: "force-cache" });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
     return (await response.arrayBuffer()).byteLength;
   } catch {
     return null;
@@ -92,7 +104,9 @@ function assertKeyedFixture(beforeEntries, afterEntries, expectedEntries) {
   for (let index = 0; index < expectedEntries.length; index += 1) {
     const expected = expectedEntries[index];
     const actual = afterEntries[index];
-    if (!expected || !actual) throw new Error("Keyed correctness check lost an expected row.");
+    if (!expected || !actual) {
+      throw new Error("Keyed correctness check lost an expected row.");
+    }
     if (actual.key !== expected.id) {
       throw new Error(
         `Keyed order check failed at ${index}: expected ${expected.id}, got ${actual.key}.`,
@@ -121,8 +135,11 @@ async function run(config) {
     const instance = adapter.mount(target, config.nodes);
     const duration = performance.now() - start;
     assertFixture(instance, "0");
-    if (index === 0) firstMountMs = duration;
-    else mountSamples.push(duration);
+    if (index === 0) {
+      firstMountMs = duration;
+    } else {
+      mountSamples.push(duration);
+    }
     instance.dispose();
   }
 
@@ -130,7 +147,9 @@ async function run(config) {
   const heapStart = heapUsed();
   const instance = adapter.mount(target, config.nodes);
 
-  for (let index = 1; index <= config.warmupUpdates; index += 1) instance.update(index);
+  for (let index = 1; index <= config.warmupUpdates; index += 1) {
+    instance.update(index);
+  }
   assertFixture(instance, String(config.warmupUpdates));
 
   const observer = new MutationObserver(() => undefined);
@@ -360,9 +379,13 @@ async function runKeyed(config) {
 }
 
 window.addEventListener("message", async (event) => {
-  if (event.origin !== window.location.origin || event.source !== window.parent) return;
+  if (event.origin !== window.location.origin || event.source !== window.parent) {
+    return;
+  }
   const message = event.data;
-  if (!message || typeof message !== "object") return;
+  if (!message || typeof message !== "object") {
+    return;
+  }
   if (
     message.type !== "rect:benchmark-run" &&
     message.type !== "rect:batched-benchmark-run" &&
