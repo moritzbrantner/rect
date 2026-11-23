@@ -1,5 +1,4 @@
-import { resolve, sep } from "node:path";
-import { dirname } from "node:path";
+import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { chromium } from "playwright";
