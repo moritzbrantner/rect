@@ -17,7 +17,8 @@ const runner = await Bun.file(
 
 test("comparison runtimes are isolated in one exact-version workspace", () => {
   expect(rootPackage.workspaces).toContain("benchmarks/comparison");
-  expect(comparisonPackage.packageManager).toBe(`bun@${comparisonBuildContract.bunVersion}`);
+  expect(rootPackage.packageManager).toBeUndefined();
+  expect(comparisonPackage.packageManager).toBeUndefined();
   expect(comparisonPackage.dependencies).toEqual(comparisonDependencyVersions);
 
   for (const dependency of Object.keys(comparisonDependencyVersions)) {
@@ -45,7 +46,6 @@ test("browser fixture runner has no comparison-runtime import map", () => {
 test("comparison build contract is explicit and complete", () => {
   expect(comparisonBuildContract).toEqual({
     schemaVersion: 1,
-    bunVersion: "1.4.3",
     target: "browser",
     format: "esm",
     minify: true,
