@@ -2,7 +2,7 @@ import { effect, state } from "../src/reactivity.ts";
 
 function readIterations(argv: string[]): number {
   const index = argv.indexOf("--iterations");
-  if (index === -1) return 100_000;
+  if (index === -1) {return 100_000;}
 
   const raw = argv[index + 1];
   const iterations = Number(raw);

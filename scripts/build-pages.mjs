@@ -51,7 +51,7 @@ function readRevision(ref) {
     stdout: "pipe",
     stderr: "pipe",
   });
-  if (result.exitCode !== 0) return null;
+  if (result.exitCode !== 0) {return null;}
   const revision = new TextDecoder().decode(result.stdout).trim();
   return revision.length > 0 ? revision : null;
 }
@@ -73,7 +73,7 @@ async function build(config) {
   });
 
   if (!result.success) {
-    for (const log of result.logs) console.error(log);
+    for (const log of result.logs) {console.error(log);}
     throw new Error("GitHub Pages build failed.");
   }
   return result;

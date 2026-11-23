@@ -88,7 +88,7 @@ export default {
   mount(target, nodeCount) {
     let controller = null;
     render(h(BenchmarkView, { nodeCount, ref: (value) => (controller = value) }), target);
-    if (!controller) throw new Error("Preact benchmark controller did not mount.");
+    if (!controller) {throw new Error("Preact benchmark controller did not mount.");}
 
     return {
       update(nextValue) {
@@ -112,7 +112,7 @@ export default {
   mountBatched(target, valueCount) {
     let controller = null;
     render(h(BatchedView, { valueCount, ref: (value) => (controller = value) }), target);
-    if (!controller) throw new Error("Preact batched benchmark controller did not mount.");
+    if (!controller) {throw new Error("Preact batched benchmark controller did not mount.");}
 
     return {
       update(base) {

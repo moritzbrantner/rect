@@ -11,7 +11,7 @@ class FakeNode {
   }
 
   get nextSibling(): FakeNode | null {
-    if (!this.parentNode) return null;
+    if (!this.parentNode) {return null;}
     const index = this.parentNode.childNodes.indexOf(this);
     return index === -1 ? null : (this.parentNode.childNodes[index + 1] ?? null);
   }
@@ -23,14 +23,14 @@ class FakeNode {
   insertBefore(child: FakeNode, reference: FakeNode | null): FakeNode {
     if (child instanceof FakeDocumentFragment) {
       const nestedChildren = child.childNodes.slice();
-      for (const nested of nestedChildren) this.insertBefore(nested, reference);
+      for (const nested of nestedChildren) {this.insertBefore(nested, reference);}
       child.childNodes = [];
       return child;
     }
 
-    if (child.parentNode) child.parentNode.removeChild(child);
+    if (child.parentNode) {child.parentNode.removeChild(child);}
     const index = reference === null ? this.childNodes.length : this.childNodes.indexOf(reference);
-    if (index === -1) throw new Error("Reference node is not a child.");
+    if (index === -1) {throw new Error("Reference node is not a child.");}
     child.parentNode = this;
     this.childNodes.splice(index, 0, child);
     return child;
@@ -38,16 +38,16 @@ class FakeNode {
 
   removeChild(child: FakeNode): FakeNode {
     const index = this.childNodes.indexOf(child);
-    if (index === -1) throw new Error("Node is not a child.");
+    if (index === -1) {throw new Error("Node is not a child.");}
     this.childNodes.splice(index, 1);
     child.parentNode = null;
     return child;
   }
 
   replaceChildren(...children: FakeNode[]): void {
-    for (const child of this.childNodes) child.parentNode = null;
+    for (const child of this.childNodes) {child.parentNode = null;}
     this.childNodes = [];
-    for (const child of children) this.appendChild(child);
+    for (const child of children) {this.appendChild(child);}
   }
 }
 

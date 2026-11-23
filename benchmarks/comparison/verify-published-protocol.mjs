@@ -34,7 +34,7 @@ function assertFiniteNumber(value, label) {
 }
 
 function assertDistribution(value, label) {
-  if (!value || typeof value !== "object") fail(`${label} is missing`);
+  if (!value || typeof value !== "object") {fail(`${label} is missing`);}
   for (const percentile of ["p50", "p95", "p99"]) {
     assertFiniteNumber(value[percentile], `${label}.${percentile}`);
   }
@@ -62,7 +62,7 @@ const server = Bun.serve({
     }
 
     const file = Bun.file(candidate);
-    if (!(await file.exists())) return new Response("Not found", { status: 404 });
+    if (!(await file.exists())) {return new Response("Not found", { status: 404 });}
     return new Response(file);
   },
 });
@@ -81,20 +81,20 @@ try {
 
   page.on("request", (request) => {
     const url = new URL(request.url());
-    if (url.protocol !== "http:" && url.protocol !== "https:") return;
-    if (url.origin !== origin) externalRequests.add(url.href);
-    else requestedPaths.add(url.pathname);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {return;}
+    if (url.origin !== origin) {externalRequests.add(url.href);}
+    else {requestedPaths.add(url.pathname);}
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    if (message.type() === "error") {consoleErrors.push(message.text());}
   });
 
   await page.goto(`${origin}/`, { waitUntil: "networkidle" });
 
   const publishedManifest = await page.evaluate(async () => {
     const response = await fetch("fixtures/manifest.json", { cache: "no-store" });
-    if (!response.ok) throw new Error(`Manifest request failed with ${response.status}.`);
+    if (!response.ok) {throw new Error(`Manifest request failed with ${response.status}.`);}
     return await response.json();
   });
   if (!sameJson(publishedManifest, manifest)) {
@@ -137,7 +137,7 @@ try {
   const fanoutText = await page
     .locator('section[aria-labelledby="evidence-title"] pre')
     .textContent();
-  if (!fanoutText) fail("fan-out evidence output is empty");
+  if (!fanoutText) {fail("fan-out evidence output is empty");}
   const fanoutResults = JSON.parse(fanoutText);
   if (!Array.isArray(fanoutResults) || fanoutResults.length !== frameworkIds.length) {
     fail("fan-out run did not return one result per framework");
@@ -156,7 +156,7 @@ try {
     if (!result || result.framework !== framework) {
       fail(`fan-out result ${index} does not match framework ${framework}`);
     }
-    if (result.verified !== true) fail(`${framework} fan-out correctness verification failed`);
+    if (result.verified !== true) {fail(`${framework} fan-out correctness verification failed`);}
     if (!sameJson(result.config, comparisonBrowserContract.fanout)) {
       fail(`${framework} fan-out config drifted from the browser acceptance contract`);
     }
@@ -207,7 +207,7 @@ try {
   const batchedText = await page
     .locator('section[aria-labelledby="batched-evidence-title"] pre')
     .textContent();
-  if (!batchedText) fail("batched evidence output is empty");
+  if (!batchedText) {fail("batched evidence output is empty");}
   const batchedResults = JSON.parse(batchedText);
   if (!Array.isArray(batchedResults) || batchedResults.length !== frameworkIds.length) {
     fail("batched run did not return one result per framework");
@@ -219,7 +219,7 @@ try {
     if (!result || result.framework !== framework) {
       fail(`batched result ${index} does not match framework ${framework}`);
     }
-    if (result.verified !== true) fail(`${framework} batched correctness verification failed`);
+    if (result.verified !== true) {fail(`${framework} batched correctness verification failed`);}
     if (!sameJson(result.config, comparisonBrowserContract.batched)) {
       fail(`${framework} batched config drifted from the browser acceptance contract`);
     }
@@ -260,7 +260,7 @@ try {
   const keyedText = await page
     .locator('section[aria-labelledby="keyed-evidence-title"] pre')
     .textContent();
-  if (!keyedText) fail("keyed evidence output is empty");
+  if (!keyedText) {fail("keyed evidence output is empty");}
   const keyedResult = JSON.parse(keyedText);
   if (keyedResult.framework !== "rect" || keyedResult.verified !== true) {
     fail("Rect keyed published protocol did not verify successfully");
@@ -275,7 +275,7 @@ try {
   }
   for (const scenario of keyedResult.scenarios) {
     if (scenario.verified !== true)
-      fail(`${scenario.scenario} keyed correctness verification failed`);
+      {fail(`${scenario.scenario} keyed correctness verification failed`);}
     assertDistribution(scenario.latencyMs, `${scenario.scenario}.latencyMs`);
     assertDistribution(scenario.mutationRecords, `${scenario.scenario}.mutationRecords`);
   }
@@ -288,8 +288,8 @@ try {
   if (externalRequests.size > 0) {
     fail(`published harness requested external origins: ${[...externalRequests].join(", ")}`);
   }
-  if (pageErrors.length > 0) fail(`page errors observed: ${pageErrors.join(" | ")}`);
-  if (consoleErrors.length > 0) fail(`console errors observed: ${consoleErrors.join(" | ")}`);
+  if (pageErrors.length > 0) {fail(`page errors observed: ${pageErrors.join(" | ")}`);}
+  if (consoleErrors.length > 0) {fail(`console errors observed: ${consoleErrors.join(" | ")}`);}
 
   console.log(
     JSON.stringify({
@@ -305,6 +305,6 @@ try {
     }),
   );
 } finally {
-  if (browser) await browser.close();
+  if (browser) {await browser.close();}
   server.stop(true);
 }

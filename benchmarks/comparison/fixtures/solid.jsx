@@ -20,7 +20,7 @@ export default {
       return <div class="fixture-grid">{cells}</div>;
     }, target);
 
-    if (!setValue) throw new Error("Solid benchmark setter did not mount.");
+    if (!setValue) {throw new Error("Solid benchmark setter did not mount.");}
 
     return {
       update(nextValue) {
@@ -47,7 +47,7 @@ export default {
       return <div class="fixture-grid">{cells}</div>;
     }, target);
 
-    if (!entries) throw new Error("Solid batched benchmark signals did not mount.");
+    if (!entries) {throw new Error("Solid batched benchmark signals did not mount.");}
 
     return {
       update(base) {

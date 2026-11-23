@@ -50,24 +50,24 @@ function registerDisposer(node: Node, dispose: Disposer): void {
 
 function moveDisposers(from: Node, to: Node): void {
   const disposers = nodeDisposers.get(from);
-  if (!disposers) return;
+  if (!disposers) {return;}
 
   nodeDisposers.delete(from);
   if (typeof disposers === "function") {
     registerDisposer(to, disposers);
     return;
   }
-  for (const dispose of disposers) registerDisposer(to, dispose);
+  for (const dispose of disposers) {registerDisposer(to, dispose);}
 }
 
 function disposeNode(node: Node): void {
   const disposers = nodeDisposers.get(node);
-  if (!disposers) return;
+  if (!disposers) {return;}
 
   if (typeof disposers === "function") {
     disposers();
   } else {
-    for (const dispose of disposers) dispose();
+    for (const dispose of disposers) {dispose();}
   }
   nodeDisposers.delete(node);
 }
@@ -105,7 +105,7 @@ function createDynamicTextBinding(accessor: Accessor<unknown>): DynamicTextBindi
     effect(() => {
       const value = textValue(accessor());
       binding.value = value;
-      for (const node of binding.nodes) node.data = value;
+      for (const node of binding.nodes) {node.data = value;}
     }),
   );
   dynamicTextBindings.set(accessor, binding);
@@ -118,7 +118,7 @@ function dynamicText(accessor: Accessor<unknown>): Text {
   binding.nodes.add(node);
   registerDisposer(node, () => {
     binding.nodes.delete(node);
-    if (binding.nodes.size !== 0) return;
+    if (binding.nodes.size !== 0) {return;}
 
     binding.dispose?.();
     dynamicTextBindings.delete(accessor);
@@ -132,7 +132,7 @@ function appendChild(parent: Node, child: Child): void {
   }
 
   if (Array.isArray(child)) {
-    for (const nested of child) appendChild(parent, nested);
+    for (const nested of child) {appendChild(parent, nested);}
     return;
   }
 
@@ -161,7 +161,7 @@ function appendChild(parent: Node, child: Child): void {
 }
 
 function applyProp(element: HTMLElement, key: string, value: unknown): void {
-  if (key === "children" || key === "key") return;
+  if (key === "children" || key === "key") {return;}
 
   if (key === "ref") {
     if (typeof value !== "function") {
@@ -172,7 +172,7 @@ function applyProp(element: HTMLElement, key: string, value: unknown): void {
   }
 
   if (key === "className") {
-    if (value !== null && value !== undefined) element.className = String(value);
+    if (value !== null && value !== undefined) {element.className = String(value);}
     return;
   }
 
@@ -201,7 +201,7 @@ function applyProp(element: HTMLElement, key: string, value: unknown): void {
     return;
   }
 
-  if (value === null || value === undefined || value === false) return;
+  if (value === null || value === undefined || value === false) {return;}
 
   if (key in element && !key.startsWith("aria-") && !key.startsWith("data-")) {
     Reflect.set(element, key, value);
@@ -245,7 +245,7 @@ function disposeConditionalBranch(
     }
   }
 
-  if (hasError) throw firstError;
+  if (hasError) {throw firstError;}
 }
 
 function createConditionalBranch(
@@ -309,7 +309,7 @@ export function show(
 
   const stop = effect(() => {
     const nextValue = condition();
-    if (activeValue === nextValue) return;
+    if (activeValue === nextValue) {return;}
     replaceBranch(nextValue);
   });
 

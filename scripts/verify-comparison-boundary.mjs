@@ -101,7 +101,7 @@ for (const fixture of manifest.fixtures) {
   }
 
   const source = await Bun.file(assetPath).text();
-  if (source.includes("esm.sh")) fail(`${fixture.id} still references esm.sh`);
+  if (source.includes("esm.sh")) {fail(`${fixture.id} still references esm.sh`);}
   if (bareRuntimeImport.test(source)) {
     fail(`${fixture.id} still contains a bare comparison-runtime import`);
   }

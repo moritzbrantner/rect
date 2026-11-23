@@ -11,7 +11,7 @@ class FakeNode {
   }
 
   get nextSibling(): FakeNode | null {
-    if (!this.parentNode) return null;
+    if (!this.parentNode) {return null;}
     const index = this.parentNode.childNodes.indexOf(this);
     return index === -1 ? null : (this.parentNode.childNodes[index + 1] ?? null);
   }
@@ -35,7 +35,7 @@ class FakeNode {
     }
 
     const index = reference === null ? this.childNodes.length : this.childNodes.indexOf(reference);
-    if (index === -1) throw new Error("Reference node is not a child.");
+    if (index === -1) {throw new Error("Reference node is not a child.");}
 
     child.parentNode = this;
     this.childNodes.splice(index, 0, child);
@@ -44,7 +44,7 @@ class FakeNode {
 
   removeChild(child: FakeNode): FakeNode {
     const index = this.childNodes.indexOf(child);
-    if (index === -1) throw new Error("Node is not a child.");
+    if (index === -1) {throw new Error("Node is not a child.");}
     this.childNodes.splice(index, 1);
     child.parentNode = null;
     return child;
